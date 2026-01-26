@@ -475,9 +475,12 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   }
 }
 
-def testSteps(projectDir, niceCmd, maven, mavenOpts, mvnCommon, jdk, testJdk) {
+def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, testJdk) {
   try {
     timeout(time: 1, unit: 'HOURS') {
+      buildDir  = "target${(testJdk == jdk) ? (jdk == deployJdk ? '' : "-jdk-$jdk") : ("-jdk-$jdk-$testJdk")}"
+      coverage  = "${(jdk == deployJdk && testJdk == deployJdk && fileExists(projectDir + '/src/main/java') && fileExists(projectDir + '/src/test')) ? '-Pcoverage' : '-P!coverage'}"
+      testGoals = "${(coverage == '-Pcoverage') ? 'jacoco:prepare-agent surefire:test jacoco:report' : 'surefire:test'}"
       dir(projectDir) {
         withMaven(
           maven: maven,
