@@ -183,6 +183,7 @@ def defBuildPriorityAndPrunedUpstreamProjects(binding) {
     if (defaultBuildPriority > 30) throw new Exception("defaultBuildPriority > 30, increase global configuration: $defaultBuildPriority")
     binding.setVariable('buildPriority', defaultBuildPriority)
   }
+  def buildPriority = binding.getVariable('buildPriority');
   if (buildPriority < 1 || buildPriority > 30) {
     throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
   }
