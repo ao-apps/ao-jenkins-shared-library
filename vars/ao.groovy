@@ -475,6 +475,31 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   }
 }
 
+def testSteps(projectDir, niceCmd, maven, mavenOpts, mvnCommon, jdk, testJdk) {
+  try {
+    timeout(time: 1, unit: 'HOURS') {
+      dir(projectDir) {
+        withMaven(
+          maven: maven,
+          mavenOpts: mavenOpts,
+          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          jdk: "jdk-$testJdk"
+        ) {
+          sh "${niceCmd}$MVN_CMD $mvnCommon -Dalt.build.dir=$buildDir $coverage $testGoals"
+        }
+      }
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
 def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
     timeout(time: 1, unit: 'HOURS') {
