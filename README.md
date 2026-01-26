@@ -29,7 +29,7 @@ branch.  So, at least at this time, we do not have a magic script that simply co
 Finally, we desire to perform the [SonarQube](https://www.sonarsource.com/products/sonarqube/) analysis
 stage only when there is a difference in the sources since the previous successful analysis, or if it has been at
 least six days since the last analysis.  We will also trigger an off-hours full analysis on Sundays, thus the builds
-on weekdays will only analyse projects that have actually been changed.  This should speed our overall multi-agent
+on weekdays will only analyze projects that have actually been changed.  This should speed our overall multi-agent
 builds that are currently bottlenecked waiting on our single SonarQube instance.
 
 Tracking the data to reliably determine when to perform the analysis requires attaching arbitrary data to the build.
