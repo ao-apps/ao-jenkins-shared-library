@@ -168,6 +168,16 @@ def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamP
   return depth;
 }
 
+/*
+ * Determines whether to continue the current build.  The build will continue when the
+ * currentBuild.result is null, SUCCESS, or UNSTABLE.
+ */
+def continueCurrentBuild() {
+  currentBuild.result == null
+  || currentBuild.result == hudson.model.Result.SUCCESS
+  || currentBuild.result == hudson.model.Result.UNSTABLE
+}
+
 //
 // Scripts pulled out of pipeline due to "General error during class generation: Method too large"
 //
