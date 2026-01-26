@@ -35,15 +35,17 @@
 // Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
 // See https://devops.stackexchange.com/a/9692
 //
-final PIPELINE_TIMEOUT = 6;
-final PIPELINE_TIMEOUT_UNIT = 'HOURS';
+class Timeouts {
+  static final PIPELINE_TIMEOUT = 6
+  static final PIPELINE_TIMEOUT_UNIT = 'HOURS'
 
-final CHECK_READY_STEPS_TIMEOUT = 15;
-final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES';
+  static final CHECK_READY_STEPS_TIMEOUT = 15
+  static final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES'
+}
 
 def setVariables(binding, currentBuild, scm, params) {
-  binding.setVariable('PIPELINE_TIMEOUT', PIPELINE_TIMEOUT)
-  binding.setVariable('PIPELINE_TIMEOUT_UNIT', PIPELINE_TIMEOUT_UNIT)
+  binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
+  binding.setVariable('PIPELINE_TIMEOUT_UNIT', Timeouts.PIPELINE_TIMEOUT_UNIT)
 
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
@@ -518,7 +520,7 @@ def setupBuildDiscarder() {
 
 def checkReadySteps() {
   try {
-    timeout(time: CHECK_READY_STEPS_TIMEOUT, unit: CHECK_READY_STEPS_TIMEOUT_UNIT) {
+    timeout(time: Timeouts.CHECK_READY_STEPS_TIMEOUT, unit: Timeouts.CHECK_READY_STEPS_TIMEOUT_UNIT) {
       try {
         // See https://javadoc.jenkins.io/jenkins/model/Jenkins.html
         // See https://javadoc.jenkins.io/hudson/model/Job.html
