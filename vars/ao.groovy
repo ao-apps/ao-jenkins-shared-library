@@ -23,6 +23,45 @@
  */
 
 /*
+ * JDK versions
+ */
+def defJdkVersions() {
+  if (!binding.hasVariable('deployJdk')) {
+    // Matches build.yml:java-version
+    binding.setVariable('deployJdk', '21')
+  }
+  if (!binding.hasVariable('buildJdks')) {
+    binding.setVariable(
+      'buildJdks',
+      ['11', '17', '21'] // Changes must be copied to matrix axes!
+    )
+  }
+  if (!binding.hasVariable('testJdks')) {
+    binding.setVariable(
+      'testJdks',
+      ['11', '17', '21'] // Changes must be copied to matrix axes!
+    )
+  }
+}
+
+def defProjectDir() {
+  if (!binding.hasVariable('projectDir')) {
+    def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
+    def defaultProjectDir
+    if (scriptPath == 'Jenkinsfile') {
+      defaultProjectDir = '.'
+    } else if (scriptPath == 'book/Jenkinsfile') {
+      defaultProjectDir = 'book'
+    } else if (scriptPath == 'devel/Jenkinsfile') {
+      defaultProjectDir = 'devel'
+    } else {
+      throw new Exception("Unexpected value for 'scriptPath': '$scriptPath'")
+    }
+    binding.setVariable('projectDir', defaultProjectDir)
+  }
+}
+
+/*
  * Finds the upstream projects for the given job.
  * Returns an array of upstream projects, possibly empty but never null
  */
