@@ -35,11 +35,11 @@
 // Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
 // See https://devops.stackexchange.com/a/9692
 //
-private static final PIPELINE_TIMEOUT = 6;
-private static final PIPELINE_TIMEOUT_UNIT = 'HOURS';
+final PIPELINE_TIMEOUT = 6;
+final PIPELINE_TIMEOUT_UNIT = 'HOURS';
 
-private static final CHECK_READY_STEPS_TIMEOUT = 15;
-private static final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES';
+final CHECK_READY_STEPS_TIMEOUT = 15;
+final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES';
 
 def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('PIPELINE_TIMEOUT', PIPELINE_TIMEOUT)
