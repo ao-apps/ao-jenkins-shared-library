@@ -5,7 +5,7 @@
 [![semantic versioning: 2.0.0](https://oss.aoapps.com/ao-badges/semver-2.0.0.svg)](https://semver.org/spec/v2.0.0.html)
 [![license: LGPL v3](https://oss.aoapps.com/ao-badges/license-lgpl-3.0.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
-[Jenkins shared library](https://www.jenkins.io/doc/book/pipeline/shared-libraries/) for all AO-supported Jenkinsfile.
+[Jenkins shared library](https://www.jenkins.io/doc/book/pipeline/shared-libraries/) for all AO-supported [Jenkins Pipelines](https://www.jenkins.io/doc/book/pipeline/syntax/).
 
 ## Features
 * [Pipeline upstream](https://www.jenkins.io/doc/book/pipeline/syntax/) optimizations:
