@@ -241,6 +241,47 @@ fi
 """
 }
 
+/*
+ * See https://plugins.jenkins.io/build-history-manager/
+ */
+def setupBuildDiscarder() {
+  buildDiscarder(BuildHistoryManager([
+    [
+      // Keep most recent not_built build, which is useful to know which
+      // builds have been superseded during their quiet period.
+      conditions: [BuildResult(
+        matchNotBuilt: true
+      )],
+      matchAtMost: 1,
+      continueAfterMatch: false
+    ],
+    [
+      // Keep most recent aborted build, which is useful to know what the build is waiting for
+      // and to see that the build is still pending in Active and Blinkenlichten views.
+      conditions: [BuildResult(
+        matchAborted: true
+      )],
+      matchAtMost: 1,
+      continueAfterMatch: false
+    ],
+    [
+      // Keep most recent 50 success/unstable/failure builds
+      conditions: [BuildResult(
+        // All statuses except ABORTED from
+        // https://github.com/jenkinsci/build-history-manager-plugin/blob/master/src/main/java/pl/damianszczepanik/jenkins/buildhistorymanager/model/conditions/BuildResultCondition.java
+        matchSuccess: true,
+        matchUnstable: true,
+        matchFailure: true
+      )],
+      matchAtMost: 50,
+      continueAfterMatch: false
+    ],
+    [
+      actions: [DeleteBuild()]
+    ]
+  ]))
+}
+
 def checkReadySteps() {
   try {
     timeout(time: 15, unit: 'MINUTES') {
