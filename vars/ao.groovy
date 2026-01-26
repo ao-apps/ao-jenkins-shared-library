@@ -370,6 +370,7 @@ private def getAllUpstreamProjects(jenkins, upstreamProjectsCache, allUpstreamPr
 private def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, upstreamProjects) {
   // Quick unique by name, and ensures a new object to not affect parameter
   upstreamProjects = upstreamProjects.unique()
+  echo "pruneUpstreamProjects: ${currentWorkflowJob.fullName}: upstreamProjects = ${upstreamProjects}"
   // Find the set of all projects for each upstreamProject
   def upstreamFullNames = []
   def allUpstreamProjects = []
