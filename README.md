@@ -12,7 +12,7 @@
   * Automatically determines [build priority](https://plugins.jenkins.io/PrioritySorter) through analysis of the
     upstream graph.
   * Prunes unnecessary upstreams: when a direct upstream is also a transitive upstream, prune the direct upstream.
-  * Abort a build when an upstream, either direct or transitive, is not ready (waiting to build, building, of not
+  * Abort a build when an upstream, either direct or transitive, is not ready (waiting to build, building, or not
     successful).
 * Various functions pulled out of `Jenkinsfile` to avoid `General error during class generation: Method too large`.
 
