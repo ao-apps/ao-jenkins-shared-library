@@ -417,7 +417,7 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
   }
 }
 
-def checkoutScmSteps(niceCmd, projectDir, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
+def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   try {
     timeout(time: 15, unit: 'MINUTES') {
       gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules)
@@ -439,7 +439,43 @@ def checkoutScmSteps(niceCmd, projectDir, scmUrl, scmBranch, scmBrowser, sparseC
   }
 }
 
-def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
+def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+  try {
+    timeout(time: 1, unit: 'HOURS') {
+      dir(projectDir) {
+        withMaven(
+          maven: maven,
+          mavenOpts: mavenOpts,
+          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          jdk: "jdk-$jdk"
+        ) {
+          sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+        }
+      }
+      script {
+        // Create a separate copy for full test matrix
+        if (testWhenExpression.call()) {
+          testJdks.each() {testJdk ->
+            if (testJdk != jdk) {
+              sh "${niceCmd}rm $projectDir/target-jdk-$jdk-$testJdk -rf"
+              sh "${niceCmd}cp -al $projectDir/target${jdk == deployJdk ? '' : "-jdk-$jdk"} $projectDir/target-jdk-$jdk-$testJdk"
+            }
+          }
+        }
+      }
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
+def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
     timeout(time: 1, unit: 'HOURS') {
       // Make sure working tree not modified by build or test
@@ -485,7 +521,7 @@ def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
   }
 }
 
-def sonarQubeAnalysisSteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
+def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
     timeout(time: 15, unit: 'MINUTES') {
       // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
