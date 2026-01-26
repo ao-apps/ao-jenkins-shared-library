@@ -397,13 +397,13 @@ private def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflo
     def transitiveOnOther = false
     for (int j = 0; j < len; j++) {
       if (j != i && allUpstreamProjects[j].contains(upstreamFullName)) {
-        //echo "pruneUpstreamProjects: ${currentWorkflowJob.fullName}: Pruned due to transitive: $upstreamFullName found in ${upstreamProjects[j]}"
+        echo "pruneUpstreamProjects: ${currentWorkflowJob.fullName}: Pruned due to transitive: $upstreamFullName found in ${upstreamProjects[j]}"
         transitiveOnOther = true
         break
       }
     }
     if (!transitiveOnOther) {
-      //echo "pruneUpstreamProjects: ${currentWorkflowJob.fullName}: Direct: ${upstreamProjects[i]}"
+      echo "pruneUpstreamProjects: ${currentWorkflowJob.fullName}: Direct: ${upstreamProjects[i]}"
       pruned << upstreamProjects[i]
     }
   }
