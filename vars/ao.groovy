@@ -222,6 +222,7 @@ def setVariables(binding, currentBuild, scm, params) {
 
   // Prune set of upstreamProjects
   def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, upstreamProjects)
+  if (true) throw new Exception("TODO: prunedUpstreamProjects = $prunedUpstreamProjects")
   binding.setVariable('prunedUpstreamProjects', prunedUpstreamProjects)
 
   if (!binding.hasVariable('buildPriority')) {
