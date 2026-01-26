@@ -241,8 +241,6 @@ fi
 """
 }
 
-// Steps moved to separate function to avoid "Method too large"
-// See https://stackoverflow.com/a/47631522
 def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
   script {
     try {
@@ -291,8 +289,6 @@ def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
   }
 }
 
-// Steps moved to separate function to avoid "Method too large"
-// See https://stackoverflow.com/a/47631522
 def sonarQubeAnalysisSteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
   script {
     try {
@@ -323,8 +319,6 @@ def sonarQubeAnalysisSteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvn
   }
 }
 
-// Steps moved to separate function to avoid "Method too large"
-// See https://stackoverflow.com/a/47631522
 def qualityGateSteps() {
   script {
     try {
@@ -343,8 +337,6 @@ def qualityGateSteps() {
   }
 }
 
-// Steps moved to separate function to avoid "Method too large"
-// See https://stackoverflow.com/a/47631522
 def analysisSteps() {
   script {
     try {
