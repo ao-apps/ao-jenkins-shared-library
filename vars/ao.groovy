@@ -23,9 +23,20 @@
  */
 
 class Parameters {
-  static final BUILD_PRIORITY_DESCRIPTION = """Specify the priority of this build.
+  static final BuildPriority_description = """Specify the priority of this build.
 Must be between 1 and 30, with lower values built first.
 Defaults to project's depth in the upstream project graph."""
+
+  static final abortOnUnreadyDependency_description = """Aborts the build when any dependency is queued, building, or unsuccessful.
+Defaults to true and will typically only be false to push a new version of a project out immediately.
+May also want to set BuildPriority to \"1\" to put at the top of the build queue."""
+
+  static final requireLastBuild_description = """Is the last build required for the zip-timestamp-merge Ant task?
+Defaults to true and will typically only be false for either the first build
+or any build that adds or removes build artifacts."""
+
+  static final mavenDebug_description = """Enables Maven -X debug output.
+Defaults to false and will typically only be true when debugging the build process itself."""
 }
 
 /*
@@ -71,7 +82,10 @@ class Timeouts {
 }
 
 def setVariables(binding, currentBuild, scm, params) {
-  binding.setVariable('BUILD_PRIORITY_DESCRIPTION', Parameters.BUILD_PRIORITY_DESCRIPTION)
+  binding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
+  binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
+  binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
+  binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
 
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
   binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
