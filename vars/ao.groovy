@@ -22,10 +22,7 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
- * JDK versions
- */
-def defJdkVersions(binding) {
+def defaultVariables(binding, currentBuild, scm) {
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
@@ -42,15 +39,12 @@ def defJdkVersions(binding) {
       ['11', '17', '21'] // Changes must be copied to matrix axes!
     )
   }
-}
 
-def defUpstreamProjects(binding) {
   if (!binding.hasVariable('upstreamProjects')) {
     binding.setVariable('upstreamProjects', [])
   }
-}
+  def upstreamProjects = binding.getVariable('upstreamProjects')
 
-def defProjectDir(binding, currentBuild) {
   if (!binding.hasVariable('projectDir')) {
     def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
     def defaultProjectDir
@@ -65,17 +59,13 @@ def defProjectDir(binding, currentBuild) {
     }
     binding.setVariable('projectDir', defaultProjectDir)
   }
-}
+  def projectDir = binding.getVariable('projectDir');
 
-def defDisableSubmodules(binding) {
   if (!binding.hasVariable('disableSubmodules')) {
     binding.setVariable('disableSubmodules', true)
   }
-}
 
-def defSparseCheckoutPaths(binding) {
   if (!binding.hasVariable('sparseCheckoutPaths')) {
-    def projectDir = binding.getVariable('projectDir')
     def defaultSparseCheckoutPaths
     if (projectDir == '.') {
       defaultSparseCheckoutPaths = [
@@ -95,9 +85,7 @@ def defSparseCheckoutPaths(binding) {
     }
     binding.setVariable('sparseCheckoutPaths', defaultSparseCheckoutPaths)
   }
-}
 
-def defScmUrl(binding, scm) {
   if (!binding.hasVariable('scmUrl')) {
     // Automatically determine Git URL: https://stackoverflow.com/a/38255364
     if (scm.userRemoteConfigs.size() == 1) {
@@ -106,9 +94,8 @@ def defScmUrl(binding, scm) {
       throw new Exception("Precisely one SCM remote expected: '" + scm.userRemoteConfigs + "'")
     }
   }
-}
+  def scmUrl = binding.getVariable('scmUrl')
 
-def defScmBranch(binding, scm) {
   if (!binding.hasVariable('scmBranch')) {
     // Automatically determine branch
     if (scm.branches.size() == 1) {
@@ -124,11 +111,8 @@ def defScmBranch(binding, scm) {
       throw new Exception("Precisely one SCM branch expected: '" + scm.branches + "'")
     }
   }
-}
 
-def defScmBrowser(binding) {
   if (!binding.hasVariable('scmBrowser')) {
-    def scmUrl = binding.getVariable('scmUrl')
     // Automatically determine SCM browser
     def aoappsPrefix        = '/srv/git/ao-apps/'
     def newmediaworksPrefix = '/srv/git/nmwoss/'
@@ -159,9 +143,7 @@ def defScmBrowser(binding) {
     }
     binding.setVariable('scmBrowser', defaultScmBrowser)
   }
-}
 
-def defBuildPriorityAndPrunedUpstreamProjects(binding) {
   // Variables temporarily used in project resolution
   def tempUpstreamProjectsCache = [:]
   def tempJenkins = Jenkins.get()
@@ -172,7 +154,7 @@ def defBuildPriorityAndPrunedUpstreamProjects(binding) {
   }
 
   // Prune set of upstreamProjects
-  def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, binding.getVariable('upstreamProjects'))
+  def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, upstreamProjects)
   binding.setVariable('prunedUpstreamProjects', prunedUpstreamProjects)
 
   if (!binding.hasVariable('buildPriority')) {
