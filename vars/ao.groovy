@@ -25,7 +25,7 @@
 /*
  * JDK versions
  */
-def defJdkVersions() {
+def defJdkVersions(binding) {
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
