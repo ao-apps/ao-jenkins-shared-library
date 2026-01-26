@@ -242,133 +242,125 @@ fi
 }
 
 def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
-  script {
-    try {
-      timeout(time: 1, unit: 'HOURS') {
-        // Make sure working tree not modified by build or test
-        sh checkTreeUnmodifiedScriptBuild(niceCmd)
-        dir(projectDir) {
-          // Download artifacts from last successful build of this job
-          // See https://plugins.jenkins.io/copyartifact/
-          // See https://www.jenkins.io/doc/pipeline/steps/copyartifact/#copyartifacts-copy-artifacts-from-another-project
-          copyArtifacts(
-            projectName: "/${JOB_NAME}",
-            selector: lastSuccessful(stable: true),
-            // *.pom included so pom-only projects have something to successfully download
-            // The other extensions match the types processed by ao-ant-tasks
-            filter: '**/*.pom, **/*.aar, **/*.jar, **/*.war, **/*.zip',
-            target: 'target/last-successful-artifacts',
-            flatten: true,
-            optional: (params.requireLastBuild == null) ? true : !params.requireLastBuild
-          )
-          // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
-          sh moveSurefireReportsScript()
+  try {
+    timeout(time: 1, unit: 'HOURS') {
+      // Make sure working tree not modified by build or test
+      sh checkTreeUnmodifiedScriptBuild(niceCmd)
+      dir(projectDir) {
+        // Download artifacts from last successful build of this job
+        // See https://plugins.jenkins.io/copyartifact/
+        // See https://www.jenkins.io/doc/pipeline/steps/copyartifact/#copyartifacts-copy-artifacts-from-another-project
+        copyArtifacts(
+          projectName: "/${JOB_NAME}",
+          selector: lastSuccessful(stable: true),
+          // *.pom included so pom-only projects have something to successfully download
+          // The other extensions match the types processed by ao-ant-tasks
+          filter: '**/*.pom, **/*.aar, **/*.jar, **/*.war, **/*.zip',
+          target: 'target/last-successful-artifacts',
+          flatten: true,
+          optional: (params.requireLastBuild == null) ? true : !params.requireLastBuild
+        )
+        // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
+        sh moveSurefireReportsScript()
+        withMaven(
+          maven: maven,
+          mavenOpts: mavenOpts,
+          mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
+          jdk: "jdk-$deployJdk"
+        ) {
+          sh "${niceCmd}$MVN_CMD $mvnCommon -Pnexus,jenkins-deploy,publish deploy"
+        }
+        // Restore surefire-reports
+        sh restoreSurefireReportsScript()
+      }
+      // Make sure working tree not modified by deploy
+      sh checkTreeUnmodifiedScriptDeploy(niceCmd)
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
+def sonarQubeAnalysisSteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
+  try {
+    timeout(time: 15, unit: 'MINUTES') {
+      // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
+      dir(projectDir) {
+        withSonarQubeEnv(installationName: 'AO SonarQube') {
           withMaven(
             maven: maven,
             mavenOpts: mavenOpts,
             mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
             jdk: "jdk-$deployJdk"
           ) {
-            sh "${niceCmd}$MVN_CMD $mvnCommon -Pnexus,jenkins-deploy,publish deploy"
+            sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
           }
-          // Restore surefire-reports
-          sh restoreSurefireReportsScript()
         }
-        // Make sure working tree not modified by deploy
-        sh checkTreeUnmodifiedScriptDeploy(niceCmd)
-      }
-    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-      if (e.isActualInterruption()) {
-        echo 'Rethrowing actual interruption instead of converting timeout to failure'
-        throw e;
-      }
-      if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-        error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
       }
     }
-  }
-}
-
-def sonarQubeAnalysisSteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
-  script {
-    try {
-      timeout(time: 15, unit: 'MINUTES') {
-        // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
-        dir(projectDir) {
-          withSonarQubeEnv(installationName: 'AO SonarQube') {
-            withMaven(
-              maven: maven,
-              mavenOpts: mavenOpts,
-              mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
-              jdk: "jdk-$deployJdk"
-            ) {
-              sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
-            }
-          }
-        }
-      }
-    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-      if (e.isActualInterruption()) {
-        echo 'Rethrowing actual interruption instead of converting timeout to failure'
-        throw e;
-      }
-      if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-        error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
-      }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
     }
   }
 }
 
 def qualityGateSteps() {
-  script {
-    try {
-      timeout(time: 1, unit: 'HOURS') {
-        waitForQualityGate(webhookSecretId: 'SONAR_WEBHOOK', abortPipeline: false)
-      }
-    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-      if (e.isActualInterruption()) {
-        echo 'Rethrowing actual interruption instead of converting timeout to failure'
-        throw e;
-      }
-      if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-        error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
-      }
+  try {
+    timeout(time: 1, unit: 'HOURS') {
+      waitForQualityGate(webhookSecretId: 'SONAR_WEBHOOK', abortPipeline: false)
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
     }
   }
 }
 
 def analysisSteps() {
-  script {
-    try {
-      timeout(time: 15, unit: 'MINUTES') {
-        def tools = []
-        tools << checkStyle(pattern: 'target/checkstyle-result.xml', skipSymbolicLinks: true)
-        tools << java()
-        tools << javaDoc()
-        // Detect JUnit results from presence of surefire-reports directory
-        if (fileExists('target/surefire-reports')) {
-          tools << junitParser(pattern: 'target*/surefire-reports/TEST-*.xml', skipSymbolicLinks: true)
-        }
-        tools << mavenConsole()
-        // php()
-        // sonarQube(), // TODO: sonar-report.json not found
-        tools << spotBugs(pattern: 'target/spotbugsXml.xml', skipSymbolicLinks: true)
-        // taskScanner()
-        recordIssues(
-          aggregatingResults: true,
-          skipPublishingChecks: true,
-          sourceCodeEncoding: 'UTF-8',
-          tools: tools
-        )
+  try {
+    timeout(time: 15, unit: 'MINUTES') {
+      def tools = []
+      tools << checkStyle(pattern: 'target/checkstyle-result.xml', skipSymbolicLinks: true)
+      tools << java()
+      tools << javaDoc()
+      // Detect JUnit results from presence of surefire-reports directory
+      if (fileExists('target/surefire-reports')) {
+        tools << junitParser(pattern: 'target*/surefire-reports/TEST-*.xml', skipSymbolicLinks: true)
       }
-    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-      if (e.isActualInterruption()) {
-        echo 'Rethrowing actual interruption instead of converting timeout to failure'
-        throw e;
-      }
-      if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-        error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
-      }
+      tools << mavenConsole()
+      // php()
+      // sonarQube(), // TODO: sonar-report.json not found
+      tools << spotBugs(pattern: 'target/spotbugsXml.xml', skipSymbolicLinks: true)
+      // taskScanner()
+      recordIssues(
+        aggregatingResults: true,
+        skipPublishingChecks: true,
+        sourceCodeEncoding: 'UTF-8',
+        tools: tools
+      )
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
     }
   }
 }
