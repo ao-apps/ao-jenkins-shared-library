@@ -8,7 +8,7 @@
 [https://www.jenkins.io/doc/book/pipeline/shared-libraries/](Jenkins shared library) for all AO-supported Jenkinsfile.
 
 ## Features
-* [https://www.jenkins.io/doc/book/pipeline/syntax/](Pipeline upstream) optimizations:
+* [Pipeline upstream](https://www.jenkins.io/doc/book/pipeline/syntax/) optimizations:
 ** Automatically determines build priority through analysis of the upstream graph.
 ** Prunes unnecessary upstreams: when a direct upstream is also a transitive upstream, prune the direct upstream.
 ** Abort a build when an upstream, either direct or transitive, is not ready (waiting to build, building, of not
