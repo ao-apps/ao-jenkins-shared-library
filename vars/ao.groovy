@@ -193,6 +193,22 @@ def defaultVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('extraProfiles')) {
     binding.setVariable('extraProfiles', [])
   }
+
+  if (!binding.hasVariable('testWhenExpression')) {
+    binding.setVariable('testWhenExpression',
+      {return fileExists(projectDir + '/src/test')}
+    )
+  }
+
+  if (!binding.hasVariable('sonarqubeWhenExpression')) {
+    binding.setVariable('sonarqubeWhenExpression',
+      {return !fileExists(projectDir + '/.github/workflows/build.yml')}
+    )
+  }
+
+  if (!binding.hasVariable('failureEmailTo')) {
+    binding.setVariable('failureEmailTo', 'support@aoindustries.com')
+  }
 }
 
 /*
