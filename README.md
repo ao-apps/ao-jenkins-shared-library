@@ -9,7 +9,8 @@
 
 ## Features
 * [Pipeline upstream](https://www.jenkins.io/doc/book/pipeline/syntax/) optimizations:
-  * Automatically determines build priority through analysis of the upstream graph.
+  * Automatically determines [build priority](https://plugins.jenkins.io/PrioritySorter) through analysis of the
+    upstream graph.
   * Prunes unnecessary upstreams: when a direct upstream is also a transitive upstream, prune the direct upstream.
   * Abort a build when an upstream, either direct or transitive, is not ready (waiting to build, building, of not
     successful).
