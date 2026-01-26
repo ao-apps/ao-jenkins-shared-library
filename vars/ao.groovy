@@ -626,3 +626,11 @@ def analysisSteps() {
     }
   }
 }
+
+def postFailure(failureEmailTo) {
+  emailext(
+    to: failureEmailTo,
+    subject: "[Jenkins] ${currentBuild.fullDisplayName} build failed",
+    body: "${env.BUILD_URL}console"
+  )
+}
