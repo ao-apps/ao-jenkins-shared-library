@@ -161,6 +161,33 @@ def defScmBrowser(binding) {
   }
 }
 
+def defBuildPriorityAndPrunedUpstreamProjects(binding) {
+  // Variables temporarily used in project resolution
+  def tempUpstreamProjectsCache = [:]
+  def tempJenkins = Jenkins.get()
+  // Find the current project
+  def tempCurrentWorkflowJob = currentBuild.rawBuild.parent
+  if (!(tempCurrentWorkflowJob instanceof org.jenkinsci.plugins.workflow.job.WorkflowJob)) {
+    throw new Exception("tempCurrentWorkflowJob is not a WorkflowJob: $tempCurrentWorkflowJob")
+  }
+
+  // Prune set of upstreamProjects
+  def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, binding.getVariable('upstreamProjects'))
+
+  if (!binding.hasVariable('buildPriority')) {
+    // Find the longest path through all upstream projects, which will be used as both job priority and
+    // nice value.  This will ensure proper build order in all cases.  However, it may prevent some
+    // possible concurrency since reduction to simple job priority number loses information about which
+    // are critical paths on the upstream project graph.
+    def defaultBuildPriority = getDepth(tempJenkins, tempUpstreamProjectsCache, [:], tempCurrentWorkflowJob, prunedUpstreamProjects)
+    if (defaultBuildPriority > 30) throw new Exception("defaultBuildPriority > 30, increase global configuration: $defaultBuildPriority")
+    binding.setVariable('buildPriority', defaultBuildPriority)
+  }
+  if (buildPriority < 1 || buildPriority > 30) {
+    throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
+  }
+}
+
 /*
  * Finds the upstream projects for the given job.
  * Returns an array of upstream projects, possibly empty but never null
@@ -227,7 +254,7 @@ private def getAllUpstreamProjects(jenkins, upstreamProjectsCache, allUpstreamPr
  *
  * 2) Removes direct upstream projects that are also transitive through others
  */
-def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, upstreamProjects) {
+private def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, upstreamProjects) {
   // Quick unique by name, and ensures a new object to not affect parameter
   upstreamProjects = upstreamProjects.unique()
   // Find the set of all projects for each upstreamProject
@@ -279,7 +306,7 @@ def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, up
  * Mapping from project full name to depth, where final depth is >= 1
  * During traversal, a project is first added to the map with a value of 0, which is used to detect graph loops
  */
-def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamProjects) {
+private def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamProjects) {
   def fullName = workflowJob.fullName
   def depth = depthMap[fullName]
   if (depth == null) {
