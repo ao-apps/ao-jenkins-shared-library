@@ -230,6 +230,7 @@ def setVariables(binding, currentBuild, scm, params) {
     // possible concurrency since reduction to simple job priority number loses information about which
     // are critical paths on the upstream project graph.
     def defaultBuildPriority = getDepth(tempJenkins, tempUpstreamProjectsCache, [:], tempCurrentWorkflowJob, prunedUpstreamProjects)
+    if (true) throw new Exception("TODO: defaultBuildPriority = $defaultBuildPriority")
     if (defaultBuildPriority > 30) throw new Exception("defaultBuildPriority > 30, increase global configuration: $defaultBuildPriority")
     binding.setVariable('buildPriority', defaultBuildPriority)
   }
