@@ -22,7 +22,7 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-def defaultVariables(binding, currentBuild, scm) {
+def defaultVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
@@ -169,6 +169,29 @@ def defaultVariables(binding, currentBuild, scm) {
   def buildPriority = binding.getVariable('buildPriority');
   if (buildPriority < 1 || buildPriority > 30) {
     throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
+  }
+
+  if (!binding.hasVariable('quietPeriod')) {
+    binding.setVariable('quietPeriod', 10 + buildPriority * 2)
+  }
+
+  if (!binding.hasVariable('nice')) {
+    def defaultNice = (params.BuildPriority == null) ? 0 : ((params.BuildPriority as Integer) - 1);
+    if (defaultNice < 0) defaultNice = 0;
+    else if (defaultNice > 19) defaultNice = 19;
+    binding.setVariable('nice', defaultNice)
+  }
+
+  if (!binding.hasVariable('maven')) {
+    binding.setVariable('maven', 'maven-3')
+  }
+
+  if (!binding.hasVariable('mavenOpts')) {
+    binding.setVariable('mavenOpts', '-Djansi.force')
+  }
+
+  if (!binding.hasVariable('extraProfiles')) {
+    binding.setVariable('extraProfiles', [])
   }
 }
 
