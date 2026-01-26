@@ -44,21 +44,19 @@ def defJdkVersions() {
   }
 }
 
-def defProjectDir() {
-  if (!binding.hasVariable('projectDir')) {
-    def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
-    def defaultProjectDir
-    if (scriptPath == 'Jenkinsfile') {
-      defaultProjectDir = '.'
-    } else if (scriptPath == 'book/Jenkinsfile') {
-      defaultProjectDir = 'book'
-    } else if (scriptPath == 'devel/Jenkinsfile') {
-      defaultProjectDir = 'devel'
-    } else {
-      throw new Exception("Unexpected value for 'scriptPath': '$scriptPath'")
-    }
-    binding.setVariable('projectDir', defaultProjectDir)
+def defProjectDir(currentBuild) {
+  def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
+  def defaultProjectDir
+  if (scriptPath == 'Jenkinsfile') {
+    defaultProjectDir = '.'
+  } else if (scriptPath == 'book/Jenkinsfile') {
+    defaultProjectDir = 'book'
+  } else if (scriptPath == 'devel/Jenkinsfile') {
+    defaultProjectDir = 'devel'
+  } else {
+    throw new Exception("Unexpected value for 'scriptPath': '$scriptPath'")
   }
+  return defaultProjectDir
 }
 
 /*
