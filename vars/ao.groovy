@@ -22,7 +22,7 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-def defaultVariables(binding, currentBuild, scm, params) {
+def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
