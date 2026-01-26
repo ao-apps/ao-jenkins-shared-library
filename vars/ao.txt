@@ -1,10 +1,16 @@
-[Jenkins shared library](https://www.jenkins.io/doc/book/pipeline/shared-libraries/) for all AO-supported [Jenkins Pipelines](https://www.jenkins.io/doc/book/pipeline/syntax/).
+<a href="https://www.jenkins.io/doc/book/pipeline/shared-libraries/">Jenkins shared library</a> for all AO-supported <a href="https://www.jenkins.io/doc/book/pipeline/syntax/">Jenkins Pipelines</a>.
 
-# `setVariables(binding, currentBuild, scm, params)`
-Sets all variables, providing defaults if not already set in the binding.
-
-Variables that may be defined in the header of `Jenkinsfile`:
-
-* `deployJdk`  
-  The version of JDK that will be used for the deploy stage.  
-  Defaults to '21'
+<h3><code>setVariables(binding, currentBuild, scm, params)</code></h3>
+<p>
+  Sets all variables, providing defaults if not already set in the binding.
+</p>
+<p>
+  Variables that may be defined in the header of <code>Jenkinsfile</code>:
+</p>
+<dl>
+  <dt><code>deployJdk</code></dt>
+  <dd>
+    The version of JDK that will be used for the deploy stage.<br>
+    Defaults to '21'
+  </dd>
+</dl>
