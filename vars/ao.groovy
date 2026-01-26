@@ -173,9 +173,9 @@ def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamP
  * currentBuild.result is null, SUCCESS, or UNSTABLE.
  */
 def continueCurrentBuild() {
-  currentBuild.result == null
-  || currentBuild.result == hudson.model.Result.SUCCESS
-  || currentBuild.result == hudson.model.Result.UNSTABLE
+  return currentBuild.result == null ||
+         currentBuild.result == hudson.model.Result.SUCCESS ||
+         currentBuild.result == hudson.model.Result.UNSTABLE
 }
 
 //
