@@ -311,6 +311,93 @@ def checkReadySteps() {
   }
 }
 
+/*
+ * Actual git checkout used by both attempts.
+ */
+def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
+  checkout scm: [$class: 'GitSCM',
+    userRemoteConfigs: [[
+      url: scmUrl,
+      refspec: "+refs/heads/$scmBranch:refs/remotes/origin/$scmBranch"
+    ]],
+    branches: [[name: "refs/heads/$scmBranch"]],
+    browser: scmBrowser,
+    extensions: [
+      // CleanCheckout was too aggressive and removed the workspace .m2 folder, added "sh" steps below
+      // [$class: 'CleanCheckout'],
+      [$class: 'CloneOption',
+        // See https://issues.jenkins.io/browse/JENKINS-45586
+        shallow: false,
+        // depth: 20,
+        honorRefspec: true
+      ],
+      [$class: 'SparseCheckoutPaths',
+        sparseCheckoutPaths: sparseCheckoutPaths
+      ],
+      [$class: 'SubmoduleOption',
+        disableSubmodules: disableSubmodules,
+        shallow: false
+        // depth: 20
+      ]
+    ]
+  ]
+}
+
+/*
+ * Git version 2.34.1 is failing when fetching without submodules, which is our most common usage.
+ * It fails only on the first fetch, then succeeds on subsequent fetches.
+ * This issue is expected to be resolved in 2.35.1.
+ *
+ * To workaround this issue, we are allowing to retry the Git fetch by catching the first failure.
+ *
+ * See https://github.com/git/git/commit/c977ff440735e2ddc2ef18b18ae9a653bb8650fe
+ * See https://gitlab.com/gitlab-org/gitlab/-/issues/27287
+ *
+ * TODO: Remove once on Git >= 2.35.1
+ */
+def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
+  try {
+    timeout(time: 15, unit: 'MINUTES') {
+      // See https://www.jenkins.io/doc/pipeline/steps/params/gitscm/
+      // See https://www.jenkins.io/doc/pipeline/steps/workflow-scm-step/#checkout-check-out-from-version-control
+      // See https://stackoverflow.com/questions/43293334/sparsecheckout-in-jenkinsfile-pipeline
+      catchError(message: 'Git 2.34.1 first fetch fails when not fetching submodules, will retry', buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+        gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules)
+      }
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
+def checkoutScmSteps(niceCmd, projectDir, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
+  try {
+    timeout(time: 15, unit: 'MINUTES') {
+      gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules)
+      sh "${niceCmd}git verify-commit HEAD"
+      sh "${niceCmd}git reset --hard"
+      // git clean -fdx was iterating all of /.m2 despite being ignored
+      sh "${niceCmd}git clean -fx -e ${(projectDir == '.') ? '/.m2' : ('/' + projectDir + '/.m2')}"
+      // Make sure working tree not modified after checkout
+      sh checkTreeUnmodifiedScriptCheckout(niceCmd)
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e;
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
 def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
     timeout(time: 1, unit: 'HOURS') {
