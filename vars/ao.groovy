@@ -22,6 +22,12 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+class Parameters {
+  static final BUILD_PRIORITY_DESCRIPTION = """Specify the priority of this build.
+Must be between 1 and 30, with lower values built first.
+Defaults to project's depth in the upstream project graph."""
+}
+
 /*
  * It is difficult to differentiate the cause of status ABORTED.  It can be a normal status when caused by a
  * dependency build still in-progress.  Or it can be an unexpected status when caused by a timeout.  In the former
@@ -65,6 +71,8 @@ class Timeouts {
 }
 
 def setVariables(binding, currentBuild, scm, params) {
+  binding.setVariable('BUILD_PRIORITY_DESCRIPTION', Parameters.BUILD_PRIORITY_DESCRIPTION)
+
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
   binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
 
