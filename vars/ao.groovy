@@ -22,22 +22,28 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+//
+// It is difficult to differentiate the cause of status ABORTED.  It can be a normal status when caused by a
+// dependency build still in-progress.  Or it can be an unexpected status when caused by a timeout.  In the former
+// cause, the build will be started again automatically by the upstream project.  In the latter case, the build
+// must be manually restarted.  Without being able to distinguish, it is less clear when the build system is not
+// making progress (all jobs can be in ABORTED state), and it is tedious to find which builds to start manually.
+//
+// This pipeline-level timeout does not convert status from ABORTED to FAILURE and should be a higher than the sum
+// of all individual per-steps timeouts below, and thus is never expected to be reached, but remains as a fallback.
+//
+// Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
+// See https://devops.stackexchange.com/a/9692
+//
+private static final PIPELINE_TIMEOUT = 6;
+private static final PIPELINE_TIMEOUT_UNIT = 'HOURS';
+
+private static final CHECK_READY_STEPS_TIMEOUT = 15;
+private static final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES';
+
 def setVariables(binding, currentBuild, scm, params) {
-  //
-  // It is difficult to differentiate the cause of status ABORTED.  It can be a normal status when caused by a
-  // dependency build still in-progress.  Or it can be an unexpected status when caused by a timeout.  In the former
-  // cause, the build will be started again automatically by the upstream project.  In the latter case, the build
-  // must be manually restarted.  Without being able to distinguish, it is less clear when the build system is not
-  // making progress (all jobs can be in ABORTED state), and it is tedious to find which builds to start manually.
-  //
-  // This pipeline-level timeout does not convert status from ABORTED to FAILURE and should be a higher than the sum
-  // of all individual per-steps timeouts below, and thus is never expected to be reached, but remains as a fallback.
-  //
-  // Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
-  // See https://devops.stackexchange.com/a/9692
-  //
-  binding.setVariable('pipelineTimeout', 6)
-  binding.setVariable('pipelineTimeoutUnit', 'HOURS')
+  binding.setVariable('PIPELINE_TIMEOUT', PIPELINE_TIMEOUT)
+  binding.setVariable('PIPELINE_TIMEOUT_UNIT', PIPELINE_TIMEOUT_UNIT)
 
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
@@ -512,7 +518,7 @@ def setupBuildDiscarder() {
 
 def checkReadySteps() {
   try {
-    timeout(time: 15, unit: 'MINUTES') {
+    timeout(time: CHECK_READY_STEPS_TIMEOUT, unit: CHECK_READY_STEPS_TIMEOUT_UNIT) {
       try {
         // See https://javadoc.jenkins.io/jenkins/model/Jenkins.html
         // See https://javadoc.jenkins.io/hudson/model/Job.html
