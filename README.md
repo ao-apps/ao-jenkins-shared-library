@@ -33,7 +33,7 @@ on weekdays will only analyze projects that have actually been changed.  This sh
 builds that are currently bottlenecked waiting on our single SonarQube instance.
 
 Tracking the data to reliably determine when to perform the analysis requires attaching arbitrary data to the build.
-For this, we will be creating a custom `[hudson.model.Action](https://javadoc.jenkins.io/hudson/model/Action.html)`
+For this, we will be creating a custom [`hudson.model.Action`](https://javadoc.jenkins.io/hudson/model/Action.html)
 in this shared library.
 
 ## Contact Us
