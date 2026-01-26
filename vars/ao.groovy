@@ -75,6 +75,7 @@ def defDisableSubmodules(binding) {
 
 def defSparseCheckoutPaths(binding) {
   if (!binding.hasVariable('sparseCheckoutPaths')) {
+    def projectDir = binding.getVariable('projectDir')
     def defaultSparseCheckoutPaths
     if (projectDir == '.') {
       defaultSparseCheckoutPaths = [
