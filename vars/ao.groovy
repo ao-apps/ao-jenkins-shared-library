@@ -181,6 +181,7 @@ def defaultVariables(binding, currentBuild, scm, params) {
     else if (defaultNice > 19) defaultNice = 19;
     binding.setVariable('nice', defaultNice)
   }
+  def nice = binding.getVariable('nice')
 
   if (!binding.hasVariable('maven')) {
     binding.setVariable('maven', 'maven-3')
@@ -193,6 +194,7 @@ def defaultVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('extraProfiles')) {
     binding.setVariable('extraProfiles', [])
   }
+  def extraProfiles = binding.getVariable('extraProfiles')
 
   if (!binding.hasVariable('testWhenExpression')) {
     binding.setVariable('testWhenExpression',
@@ -209,6 +211,27 @@ def defaultVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('failureEmailTo')) {
     binding.setVariable('failureEmailTo', 'support@aoindustries.com')
   }
+
+  // Common settings
+  def mvnCommonArgs = [
+    '-Dstyle.color=always',
+    '-Dmaven.gitcommitid.nativegit=true',
+    "-DrequireLastBuild=${params.requireLastBuild ?: false}",
+    "-Djenkins.buildNumber=${currentBuild.number}",
+    '-N',
+    '-U',
+    "-Pjenkins,POST-SNAPSHOT${extraProfiles.isEmpty() ? '' : (',' + extraProfiles.join(','))}"
+  ]
+  if (params.mavenDebug) {
+    mvnCommonArgs.add(0, '-X')
+  }
+  binding.setVariable('mvnCommon', mvnCommonArgs.join(' '))
+
+  // Phases for Build stage
+  binding.setVariable('buildPhases', 'clean process-test-classes')
+
+  // Determine nice command prefix or empty string for none
+  binding.setVariable('niceCmd', (nice == 0) ? '' : "nice -n$nice ")
 }
 
 /*
