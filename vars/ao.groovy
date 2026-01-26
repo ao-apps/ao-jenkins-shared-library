@@ -22,31 +22,49 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//
-// It is difficult to differentiate the cause of status ABORTED.  It can be a normal status when caused by a
-// dependency build still in-progress.  Or it can be an unexpected status when caused by a timeout.  In the former
-// cause, the build will be started again automatically by the upstream project.  In the latter case, the build
-// must be manually restarted.  Without being able to distinguish, it is less clear when the build system is not
-// making progress (all jobs can be in ABORTED state), and it is tedious to find which builds to start manually.
-//
-// This pipeline-level timeout does not convert status from ABORTED to FAILURE and should be a higher than the sum
-// of all individual per-steps timeouts below, and thus is never expected to be reached, but remains as a fallback.
-//
-// Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
-// See https://devops.stackexchange.com/a/9692
-//
+/*
+ * It is difficult to differentiate the cause of status ABORTED.  It can be a normal status when caused by a
+ * dependency build still in-progress.  Or it can be an unexpected status when caused by a timeout.  In the former
+ * cause, the build will be started again automatically by the upstream project.  In the latter case, the build
+ * must be manually restarted.  Without being able to distinguish, it is less clear when the build system is not
+ * making progress (all jobs can be in ABORTED state), and it is tedious to find which builds to start manually.
+ *
+ * This pipeline-level timeout does not convert status from ABORTED to FAILURE and should be a higher than the sum
+ * of all individual per-steps timeouts below, and thus is never expected to be reached, but remains as a fallback.
+ *
+ * Individual "steps" blocks below perform timeouts within catch blocks to convert status ABORTED to FAILURE.
+ * See https://devops.stackexchange.com/a/9692
+ */
 class Timeouts {
-  static final PIPELINE_TIMEOUT = 6
-  static final PIPELINE_TIMEOUT_UNIT = 'HOURS'
+  static final TIMEOUT_UNIT = 'MINUTES'
 
-  static final CHECK_READY_STEPS_TIMEOUT = 15
-  static final CHECK_READY_STEPS_TIMEOUT_UNIT = 'MINUTES'
+  // Individual steps
+  static final CHECK_READY_STEPS_TIMEOUT          = 15
+  static final WORKAROUND_GIT_27287_STEPS_TIMEOUT = 15
+  static final CHECKOUT_SCM_STEPS_TIMEOUT         = 15
+  static final BUILD_STEPS_TIMEOUT                = 60
+  static final TEST_STEPS_TIMEOUT                 = 60
+  static final DEPLOY_STEPS_TIMEOUT               = 60
+  static final SONARQUBE_ANALYSIS_STEPS_TIMEOUT   = 15
+  static final QUALITY_GATE_STEPS_TIMEOUT         = 60
+  static final ANALYSIS_STEPS_TIMEOUT             = 15
+
+  // Total pipeline is sum of steps with an extra half-hour cushion
+  static final PIPELINE_TIMEOUT = (
+    30 + // Cushion
+    CHECK_READY_STEPS_TIMEOUT +
+    WORKAROUND_GIT_27287_STEPS_TIMEOUT +
+    CHECKOUT_SCM_STEPS_TIMEOUT +
+    BUILD_STEPS_TIMEOUT +
+    TEST_STEPS_TIMEOUT +
+    DEPLOY_STEPS_TIMEOUT +
+    SONARQUBE_ANALYSIS_STEPS_TIMEOUT +
+    QUALITY_GATE_STEPS_TIMEOUT +
+    ANALYSIS_STEPS_TIMEOUT
+  )
 }
 
 def setVariables(binding, currentBuild, scm, params) {
-  binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
-  binding.setVariable('PIPELINE_TIMEOUT_UNIT', Timeouts.PIPELINE_TIMEOUT_UNIT)
-
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
@@ -520,7 +538,7 @@ def setupBuildDiscarder() {
 
 def checkReadySteps() {
   try {
-    timeout(time: Timeouts.CHECK_READY_STEPS_TIMEOUT, unit: Timeouts.CHECK_READY_STEPS_TIMEOUT_UNIT) {
+    timeout(time: Timeouts.CHECK_READY_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       try {
         // See https://javadoc.jenkins.io/jenkins/model/Jenkins.html
         // See https://javadoc.jenkins.io/hudson/model/Job.html
@@ -634,7 +652,7 @@ private def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disa
  */
 def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   try {
-    timeout(time: 15, unit: 'MINUTES') {
+    timeout(time: Timeouts.WORKAROUND_GIT_27287_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       // See https://www.jenkins.io/doc/pipeline/steps/params/gitscm/
       // See https://www.jenkins.io/doc/pipeline/steps/workflow-scm-step/#checkout-check-out-from-version-control
       // See https://stackoverflow.com/questions/43293334/sparsecheckout-in-jenkinsfile-pipeline
@@ -655,7 +673,7 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
 
 def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   try {
-    timeout(time: 15, unit: 'MINUTES') {
+    timeout(time: Timeouts.CHECKOUT_SCM_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules)
       sh "${niceCmd}git verify-commit HEAD"
       sh "${niceCmd}git reset --hard"
@@ -677,7 +695,7 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   try {
-    timeout(time: 1, unit: 'HOURS') {
+    timeout(time: Timeouts.BUILD_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       dir(projectDir) {
         withMaven(
           maven: maven,
@@ -713,7 +731,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
 
 def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, testJdk) {
   try {
-    timeout(time: 1, unit: 'HOURS') {
+    timeout(time: Timeouts.TEST_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       def buildDir  = "target${(testJdk == jdk) ? (jdk == deployJdk ? '' : "-jdk-$jdk") : ("-jdk-$jdk-$testJdk")}"
       def coverage  = "${(jdk == deployJdk && testJdk == deployJdk && fileExists(projectDir + '/src/main/java') && fileExists(projectDir + '/src/test')) ? '-Pcoverage' : '-P!coverage'}"
       def testGoals = "${(coverage == '-Pcoverage') ? 'jacoco:prepare-agent surefire:test jacoco:report' : 'surefire:test'}"
@@ -741,7 +759,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
 
 def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
-    timeout(time: 1, unit: 'HOURS') {
+    timeout(time: Timeouts.DEPLOY_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       // Make sure working tree not modified by build or test
       sh checkTreeUnmodifiedScriptBuild(niceCmd)
       dir(projectDir) {
@@ -787,7 +805,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
 
 def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   try {
-    timeout(time: 15, unit: 'MINUTES') {
+    timeout(time: Timeouts.SONARQUBE_ANALYSIS_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
       dir(projectDir) {
         withSonarQubeEnv(installationName: 'AO SonarQube') {
@@ -815,7 +833,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
 
 def qualityGateSteps() {
   try {
-    timeout(time: 1, unit: 'HOURS') {
+    timeout(time: Timeouts.QUALITY_GATE_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       waitForQualityGate(webhookSecretId: 'SONAR_WEBHOOK', abortPipeline: false)
     }
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
@@ -831,7 +849,7 @@ def qualityGateSteps() {
 
 def analysisSteps() {
   try {
-    timeout(time: 15, unit: 'MINUTES') {
+    timeout(time: Timeouts.ANALYSIS_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       def tools = []
       tools << checkStyle(pattern: 'target/checkstyle-result.xml', skipSymbolicLinks: true)
       tools << java()
