@@ -65,6 +65,9 @@ class Timeouts {
 }
 
 def setVariables(binding, currentBuild, scm, params) {
+  binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
+  binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
+
   if (!binding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
