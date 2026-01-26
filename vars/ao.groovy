@@ -173,6 +173,7 @@ def defBuildPriorityAndPrunedUpstreamProjects(binding) {
 
   // Prune set of upstreamProjects
   def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, binding.getVariable('upstreamProjects'))
+  binding.setVariable('prunedUpstreamProjects', prunedUpstreamProjects)
 
   if (!binding.hasVariable('buildPriority')) {
     // Find the longest path through all upstream projects, which will be used as both job priority and
