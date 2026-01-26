@@ -44,6 +44,12 @@ def defJdkVersions(binding) {
   }
 }
 
+def defUpstreamProjects(binding) {
+  if (!binding.hasVariable('upstreamProjects')) {
+    binding.setVariable('upstreamProjects', [])
+  }
+}
+
 def defProjectDir(binding, currentBuild) {
   if (!binding.hasVariable('projectDir')) {
     def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
@@ -58,6 +64,35 @@ def defProjectDir(binding, currentBuild) {
       throw new Exception("Unexpected value for 'scriptPath': '$scriptPath'")
     }
     binding.setVariable('projectDir', defaultProjectDir)
+  }
+}
+
+def defDisableSubmodules(binding) {
+  if (!binding.hasVariable('disableSubmodules')) {
+    binding.setVariable('disableSubmodules', true)
+  }
+}
+
+def defSparseCheckoutPaths(binding) {
+  if (!binding.hasVariable('sparseCheckoutPaths')) {
+    def defaultSparseCheckoutPaths
+    if (projectDir == '.') {
+      defaultSparseCheckoutPaths = [
+        [path:'/*'],
+        [path:'!/book/'],
+        [path:'/book/pom.xml'],
+        [path:'!/devel/']
+      ]
+    } else if (projectDir == 'book' || projectDir == 'devel') {
+      defaultSparseCheckoutPaths = [
+        [path:'/.gitignore'],
+        [path:'/.gitmodules'],
+        [path:"/$projectDir/"]
+      ]
+    } else {
+      throw new Exception("Unexpected value for 'projectDir': '$projectDir'")
+    }
+    binding.setVariable('sparseCheckoutPaths', defaultSparseCheckoutPaths)
   }
 }
 
