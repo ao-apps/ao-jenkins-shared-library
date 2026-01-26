@@ -231,62 +231,51 @@ fi
 """
 }
 
-def deployStage(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
-  stage('Deploy') {
-    when {
-      expression {
-        return (
-          currentBuild.result == null
-          || currentBuild.result == hudson.model.Result.SUCCESS
-          || currentBuild.result == hudson.model.Result.UNSTABLE
-        )
-      }
-    }
-    steps {
-      script {
-        try {
-          timeout(time: 1, unit: 'HOURS') {
-            // Make sure working tree not modified by build or test
-            sh checkTreeUnmodifiedScriptBuild(niceCmd)
-            dir(projectDir) {
-              // Download artifacts from last successful build of this job
-              // See https://plugins.jenkins.io/copyartifact/
-              // See https://www.jenkins.io/doc/pipeline/steps/copyartifact/#copyartifacts-copy-artifacts-from-another-project
-              copyArtifacts(
-                projectName: "/${JOB_NAME}",
-                selector: lastSuccessful(stable: true),
-                // *.pom included so pom-only projects have something to successfully download
-                // The other extensions match the types processed by ao-ant-tasks
-                filter: '**/*.pom, **/*.aar, **/*.jar, **/*.war, **/*.zip',
-                target: 'target/last-successful-artifacts',
-                flatten: true,
-                optional: (params.requireLastBuild == null) ? true : !params.requireLastBuild
-              )
-              // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
-              sh moveSurefireReportsScript()
-              withMaven(
-                maven: maven,
-                mavenOpts: mavenOpts,
-                mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
-                jdk: "jdk-$deployJdk"
-              ) {
-                sh "${niceCmd}$MVN_CMD $mvnCommon -Pnexus,jenkins-deploy,publish deploy"
-              }
-              // Restore surefire-reports
-              sh restoreSurefireReportsScript()
-            }
-            // Make sure working tree not modified by deploy
-            sh checkTreeUnmodifiedScriptDeploy(niceCmd)
+// Steps moved to separate function to avoid "Method too large"
+// See https://stackoverflow.com/a/47631522
+def deploySteps(niceCmd, projectDir, deployJdk, maven, mavenOpts, mvnCommon) {
+  script {
+    try {
+      timeout(time: 1, unit: 'HOURS') {
+        // Make sure working tree not modified by build or test
+        sh checkTreeUnmodifiedScriptBuild(niceCmd)
+        dir(projectDir) {
+          // Download artifacts from last successful build of this job
+          // See https://plugins.jenkins.io/copyartifact/
+          // See https://www.jenkins.io/doc/pipeline/steps/copyartifact/#copyartifacts-copy-artifacts-from-another-project
+          copyArtifacts(
+            projectName: "/${JOB_NAME}",
+            selector: lastSuccessful(stable: true),
+            // *.pom included so pom-only projects have something to successfully download
+            // The other extensions match the types processed by ao-ant-tasks
+            filter: '**/*.pom, **/*.aar, **/*.jar, **/*.war, **/*.zip',
+            target: 'target/last-successful-artifacts',
+            flatten: true,
+            optional: (params.requireLastBuild == null) ? true : !params.requireLastBuild
+          )
+          // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
+          sh moveSurefireReportsScript()
+          withMaven(
+            maven: maven,
+            mavenOpts: mavenOpts,
+            mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
+            jdk: "jdk-$deployJdk"
+          ) {
+            sh "${niceCmd}$MVN_CMD $mvnCommon -Pnexus,jenkins-deploy,publish deploy"
           }
-        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-          if (e.isActualInterruption()) {
-            echo 'Rethrowing actual interruption instead of converting timeout to failure'
-            throw e;
-          }
-          if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-            error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
-          }
+          // Restore surefire-reports
+          sh restoreSurefireReportsScript()
         }
+        // Make sure working tree not modified by deploy
+        sh checkTreeUnmodifiedScriptDeploy(niceCmd)
+      }
+    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+      if (e.isActualInterruption()) {
+        echo 'Rethrowing actual interruption instead of converting timeout to failure'
+        throw e;
+      }
+      if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+        error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
       }
     }
   }
