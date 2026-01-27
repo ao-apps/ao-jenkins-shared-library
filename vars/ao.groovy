@@ -88,6 +88,7 @@ class Timeouts {
  * Constants used internally within ao.groovy.
  */
 class Constants {
+
   /**
    * The name used for parameter holding the git commit of the SonarQube analysis.
    */
@@ -97,6 +98,12 @@ class Constants {
    * The name used for parameter holding the time at the beginning of the SonarQube analysis.
    */
   static final String SONAR_ANALYSIS_TIME = 'SONAR_ANALYSIS_TIME'
+
+  /**
+   * The number of days to perform SonarQube analysis even when no files changed.
+   * Six days selected so can analyze routinely on Sundays, then only do as-needed during the following weekdays.
+   */
+  static final int SONAR_REANALYZE_DAYS = 6
 }
 
 def setVariables(binding, currentBuild, scm, params) {
@@ -288,9 +295,65 @@ def setVariables(binding, currentBuild, scm, params) {
   }
 
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
-    binding.setVariable('sonarqubeWhenExpression',
-      {return !fileExists(projectDir + '/.github/workflows/build.yml')}
-    )
+    // Compute once when first needed and store result
+    def sonarqubeWhenExpressionResult = null
+    binding.setVariable('sonarqubeWhenExpression', {
+      // Return if already computed
+      if (sonarqubeWhenExpressionResult != null) return sonarqubeWhenExpressionResult
+
+      def compute = {
+        // Do not run SonarQube for projects that are run in GitHub Actions.
+        // They use sonarcloud.io instead.
+        if (fileExists(projectDir + '/.github/workflows/build.yml')) {
+          return false
+        }
+
+        // Find the most recent build that ran SonarQube analysis
+        def lastAnalysisGitCommit = null
+        def lastAnalysisTime = null
+        def previous = currentBuild.rawBuild.previousBuild
+        while (previous != null) {
+          // Check all ParametersAction in this build
+          if (previous.getActions(ParametersAction).find {
+            (lastAnalysisGitCommit = it?.getParameter(Constants.SONAR_GIT_COMMIT)) &&
+            (lastAnalysisTime = it?.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong())
+          }) {
+            break
+          }
+          previous = previous.previousBuild
+        }
+        if (lastAnalysisGitCommit == null) {
+          echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
+          return true
+        }
+        if (lastAnalysisTime != null) {
+          long currentTime = System.currentTimeMillis()
+          // Handle system clock changes
+          if (lastAnalysisTime > currentTime) {
+            echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
+            return true
+          }
+          if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
+            echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
+            return true
+          }
+        }
+        // git diff to decide
+        def numChanges = sh(
+          script: "${niceCmd}git diff --name-only ${lastAnalysisGitCommit} HEAD | wc -l",
+          returnStdout: true
+        ).trim().toInteger()
+        if (numChanges > 0) {
+          echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
+          return true
+        } else {
+          echo "sonarqubeWhenExpression: no files changed since last analysis, skipping."
+          return false
+        }
+      }
+      sonarqubeWhenExpressionResult = compute.call()
+      return sonarqubeWhenExpressionResult
+    })
   }
 
   if (!binding.hasVariable('failureEmailTo')) {
