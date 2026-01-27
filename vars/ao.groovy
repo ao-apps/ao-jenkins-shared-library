@@ -950,14 +950,12 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             script: "${niceCmd}git rev-parse HEAD",
             returnStdout: true
           ).trim()
-          echo "sonarQubeAnalysisSteps: gitCommit = ${gitCommit}"
           run.addAction(new ParametersAction(
               new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
               new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
           ))
-          echo "sonarQubeAnalysisSteps: added action"
           run.save()
-          echo "sonarQubeAnalysisSteps: saved"
+          echo "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
         }
       }
     }
