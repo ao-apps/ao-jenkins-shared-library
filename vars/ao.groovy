@@ -295,7 +295,8 @@ def setVariables(binding, currentBuild, scm, params) {
   }
 
   // Determine nice command prefix or empty string for none
-  binding.setVariable('niceCmd', (nice == 0) ? '' : "nice -n$nice ")
+  def niceCmd = (nice == 0) ? '' : "nice -n$nice "
+  binding.setVariable('niceCmd', niceCmd)
 
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
