@@ -830,7 +830,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   }
 }
 
-def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
+def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, gitCommit) {
   try {
     timeout(time: Timeouts.SONARQUBE_ANALYSIS_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
@@ -850,7 +850,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
           run.getActions(SonarQubeAnalysisAction).each { action ->
             run.removeAction(action)
           }
-          run.addAction(new SonarQubeAnalysisAction(analysisTime, env.GIT_COMMIT))
+          run.addAction(new SonarQubeAnalysisAction(analysisTime, gitCommit))
           run.rawBuild.save()
         }
       }
