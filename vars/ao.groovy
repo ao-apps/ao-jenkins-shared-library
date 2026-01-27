@@ -22,6 +22,8 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import com.aoapps.jenkins.SonarQubeAnalysisAction
+
 class Parameters {
   static final BuildPriority_description = """Specify the priority of this build.
 Must be between 1 and 30, with lower values built first.
@@ -834,6 +836,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
       // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
       dir(projectDir) {
         withSonarQubeEnv(installationName: 'AO SonarQube') {
+          long analysisTime = System.currentTimeMillis()
           withMaven(
             maven: maven,
             mavenOpts: mavenOpts,
@@ -842,6 +845,13 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
           ) {
             sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
           }
+          def run = currentBuild.rawBuild;
+          // Only keep the most recent action
+          run.getActions(SonarQubeAnalysisAction).each { action ->
+            run.removeAction(action)
+          }
+          run.addAction(new SonarQubeAnalysisAction(analysisTime, env.GIT_COMMIT))
+          run.rawBuild.save()
         }
       }
     }
