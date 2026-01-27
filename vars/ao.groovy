@@ -22,7 +22,8 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import com.aoapps.jenkins.SonarQubeAnalysisAction
+import hudson.model.ParametersAction
+import hudson.model.StringParameterValue
 
 class Parameters {
   static final BuildPriority_description = """Specify the priority of this build.
@@ -81,6 +82,21 @@ class Timeouts {
     QUALITY_GATE_STEPS_TIMEOUT +
     ANALYSIS_STEPS_TIMEOUT
   )
+}
+
+/**
+ * Constants used internally within ao.groovy.
+ */
+class Constants {
+  /**
+   * The name used for parameter holding the git commit of the SonarQube analysis.
+   */
+  static final String SONAR_GIT_COMMIT = 'SONAR_GIT_COMMIT'
+
+  /**
+   * The name used for parameter holding the time at the beginning of the SonarQube analysis.
+   */
+  static final String SONAR_ANALYSIS_TIME = 'SONAR_ANALYSIS_TIME'
 }
 
 def setVariables(binding, currentBuild, scm, params) {
@@ -847,17 +863,20 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
           }
           def run = currentBuild.rawBuild;
           // Only keep the most recent action
-          run.getActions(SonarQubeAnalysisAction).each { action ->
-            run.removeAction(action)
-          }
+          run.getActions(ParametersAction)
+             .findAll { it?.getParameter(Constants.SONAR_GIT_COMMIT) || it?.getParameter(Constants.SONAR_ANALYSIS_TIME) }
+             .each { run.removeAction(it) }
           def gitCommit = sh(
             script: "${niceCmd}git rev-parse HEAD",
             returnStdout: true
           ).trim()
           echo "sonarQubeAnalysisSteps: gitCommit = ${gitCommit}"
-          run.addAction(new SonarQubeAnalysisAction(analysisTime, gitCommit))
+          run.addAction(new ParametersAction(
+              new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
+              new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
+          ))
           echo "sonarQubeAnalysisSteps: added action"
-          run.rawBuild.save()
+          run.save()
           echo "sonarQubeAnalysisSteps: saved"
         }
       }
