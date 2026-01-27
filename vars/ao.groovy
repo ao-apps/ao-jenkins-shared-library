@@ -344,7 +344,8 @@ def setVariables(binding, currentBuild, scm, params) {
         }
         // git diff to decide
         def numChanges = sh(
-          script: "${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD | wc -l",
+          script: """set -o pipefail
+${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD | wc -l""",
           returnStdout: true
         ).trim().toInteger()
         if (numChanges > 0) {
