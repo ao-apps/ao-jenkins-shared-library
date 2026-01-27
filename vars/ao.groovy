@@ -309,6 +309,7 @@ def setVariables(binding, currentBuild, scm, params) {
         // Do not run SonarQube for projects that are run in GitHub Actions.
         // They use sonarcloud.io instead.
         if (fileExists(projectDir + '/.github/workflows/build.yml')) {
+          echo "sonarqubeWhenExpression: project uses sonarcloud.io via GitHub Actions, skipping"
           return false
         }
 
