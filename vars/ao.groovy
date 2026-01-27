@@ -319,7 +319,7 @@ def setVariables(binding, currentBuild, scm, params) {
         while (previous != null) {
           // Check all ParametersAction in this build
           if (previous.getActions(ParametersAction).find {
-            (lastAnalysisGitCommit = it?.getParameter(Constants.SONAR_GIT_COMMIT))?.value &&
+            (lastAnalysisGitCommit = it?.getParameter(Constants.SONAR_GIT_COMMIT)?.value) &&
             (lastAnalysisTime = it?.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong())
           }) {
             break
