@@ -345,8 +345,21 @@ def setVariables(binding, currentBuild, scm, params) {
         // git diff to decide
         def numChanges = sh(
           script: """#!/bin/bash
+set -e
 set -o pipefail
-${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD | wc -l""",
+set -f
+# Paths are relative to the Git repository root
+cd "\$(${niceCmd}git rev-parse --show-toplevel)"
+# Convert sparse checkout to Git pathspecs
+mapfile -t pathspecs < <(
+  git sparse-checkout list |
+  sed -e 's#^/##' \
+      -e 's#^!#:(exclude)#' \
+      -e 's#:(exclude)/#:(exclude)#' \
+      -e 's#/\$#/**#'
+)
+${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
+""",
           returnStdout: true
         ).trim().toInteger()
         if (numChanges > 0) {
