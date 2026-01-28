@@ -16,7 +16,8 @@
     successful).
 * Various functions pulled out of `Jenkinsfile` to avoid `General error during class generation: Method too large`.
 * Attaches [SonarQube](https://www.sonarsource.com/products/sonarqube/) analysis time to the build as a
-  [`hudson.model.Action`](https://javadoc.jenkins.io/hudson/model/Action.html) for conditional analysis runs.
+  [`hudson.model.ParametersAction`](https://javadoc.jenkins-ci.org/hudson/model/ParametersAction.html) for automatic
+  conditional analysis runs.  Allows manual override in parameters.
 
 ## Motivation
 We currently support 1185 projects with `Jenkinsfile`, each with a per-project header followed by 1140 lines that are
