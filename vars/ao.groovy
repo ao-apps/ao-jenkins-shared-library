@@ -26,19 +26,19 @@ import hudson.model.ParametersAction
 import hudson.model.StringParameterValue
 
 class Parameters {
-  static final BuildPriority_description = """Specify the priority of this build.
+  static final String BuildPriority_description = """Specify the priority of this build.
 Must be between 1 and 30, with lower values built first.
 Defaults to project's depth in the upstream project graph."""
 
-  static final abortOnUnreadyDependency_description = """Aborts the build when any dependency is queued, building, or unsuccessful.
+  static final String abortOnUnreadyDependency_description = """Aborts the build when any dependency is queued, building, or unsuccessful.
 Defaults to true and will typically only be false to push a new version of a project out immediately.
 May also want to set BuildPriority to \"1\" to put at the top of the build queue."""
 
-  static final requireLastBuild_description = """Is the last build required for the zip-timestamp-merge Ant task?
+  static final String requireLastBuild_description = """Is the last build required for the zip-timestamp-merge Ant task?
 Defaults to true and will typically only be false for either the first build
 or any build that adds or removes build artifacts."""
 
-  static final mavenDebug_description = """Enables Maven -X debug output.
+  static final String mavenDebug_description = """Enables Maven -X debug output.
 Defaults to false and will typically only be true when debugging the build process itself."""
 }
 
@@ -56,21 +56,21 @@ Defaults to false and will typically only be true when debugging the build proce
  * See https://devops.stackexchange.com/a/9692
  */
 class Timeouts {
-  static final TIMEOUT_UNIT = 'MINUTES'
+  static final String TIMEOUT_UNIT = 'MINUTES'
 
   // Individual steps
-  static final CHECK_READY_STEPS_TIMEOUT          = 15
-  static final WORKAROUND_GIT_27287_STEPS_TIMEOUT = 15
-  static final CHECKOUT_SCM_STEPS_TIMEOUT         = 15
-  static final BUILD_STEPS_TIMEOUT                = 60
-  static final TEST_STEPS_TIMEOUT                 = 60
-  static final DEPLOY_STEPS_TIMEOUT               = 60
-  static final SONARQUBE_ANALYSIS_STEPS_TIMEOUT   = 15
-  static final QUALITY_GATE_STEPS_TIMEOUT         = 60
-  static final ANALYSIS_STEPS_TIMEOUT             = 15
+  static final int CHECK_READY_STEPS_TIMEOUT          = 15
+  static final int WORKAROUND_GIT_27287_STEPS_TIMEOUT = 15
+  static final int CHECKOUT_SCM_STEPS_TIMEOUT         = 15
+  static final int BUILD_STEPS_TIMEOUT                = 60
+  static final int TEST_STEPS_TIMEOUT                 = 60
+  static final int DEPLOY_STEPS_TIMEOUT               = 60
+  static final int SONARQUBE_ANALYSIS_STEPS_TIMEOUT   = 15
+  static final int QUALITY_GATE_STEPS_TIMEOUT         = 60
+  static final int ANALYSIS_STEPS_TIMEOUT             = 15
 
   // Total pipeline is sum of steps with an extra half-hour cushion
-  static final PIPELINE_TIMEOUT = (
+  static final int PIPELINE_TIMEOUT = (
     30 + // Cushion
     CHECK_READY_STEPS_TIMEOUT +
     WORKAROUND_GIT_27287_STEPS_TIMEOUT +
