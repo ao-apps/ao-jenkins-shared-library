@@ -168,7 +168,7 @@ def setVariables(binding, currentBuild, scm, params) {
     }
     binding.setVariable('projectDir', defaultProjectDir)
   }
-  def projectDir = binding.getVariable('projectDir');
+  def projectDir = binding.getVariable('projectDir')
 
   if (!binding.hasVariable('disableSubmodules')) {
     binding.setVariable('disableSubmodules', true)
@@ -275,7 +275,7 @@ def setVariables(binding, currentBuild, scm, params) {
     if (defaultBuildPriority > 30) throw new Exception("defaultBuildPriority > 30, increase global configuration: $defaultBuildPriority")
     binding.setVariable('buildPriority', defaultBuildPriority)
   }
-  def buildPriority = binding.getVariable('buildPriority');
+  def buildPriority = binding.getVariable('buildPriority')
   if (buildPriority < 1 || buildPriority > 30) {
     throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
   }
@@ -285,9 +285,9 @@ def setVariables(binding, currentBuild, scm, params) {
   }
 
   if (!binding.hasVariable('nice')) {
-    def defaultNice = (params.BuildPriority == null) ? 0 : ((params.BuildPriority as Integer) - 1);
-    if (defaultNice < 0) defaultNice = 0;
-    else if (defaultNice > 19) defaultNice = 19;
+    def defaultNice = (params.BuildPriority == null) ? 0 : ((params.BuildPriority as Integer) - 1)
+    if (defaultNice < 0) defaultNice = 0
+    else if (defaultNice > 19) defaultNice = 19
     binding.setVariable('nice', defaultNice)
   }
   def nice = binding.getVariable('nice')
@@ -350,7 +350,7 @@ def setVariables(binding, currentBuild, scm, params) {
       ).trim() != ''
     })
   }
-  def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression');
+  def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression')
 
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
@@ -613,7 +613,7 @@ private def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobU
   } else if (depth == 0) {
     throw new Exception("$fullName: Loop detected in upstream project graph")
   }
-  return depth;
+  return depth
 }
 
 /*
@@ -738,7 +738,7 @@ def checkReadySteps() {
         // See https://javadoc.jenkins.io/hudson/model/Job.html
         // See https://javadoc.jenkins.io/hudson/model/Run.html
         // See https://javadoc.jenkins.io/hudson/model/Result.html
-        def jenkins = Jenkins.get();
+        def jenkins = Jenkins.get()
         // Get the mapping of all active dependencies and their current status
         def upstreamProjectsCache = [:]
         def allUpstreamProjectsCache = [:]
@@ -767,21 +767,21 @@ def checkReadySteps() {
           if (!(upstreamWorkflowJob instanceof org.jenkinsci.plugins.workflow.job.WorkflowJob)) {
             throw new Exception("${currentWorkflowJob.fullName}: $upstreamProject: upstreamWorkflowJob is not a WorkflowJob: $upstreamWorkflowJob")
           }
-          def lastBuild = upstreamWorkflowJob.getLastBuild();
+          def lastBuild = upstreamWorkflowJob.getLastBuild()
           if (lastBuild == null) {
             throw new IllegalStateException("${currentWorkflowJob.fullName}: Aborting due to dependency never built: ${upstreamWorkflowJob.fullName}")
           }
           if (lastBuild.isBuilding()) {
             throw new IllegalStateException("${currentWorkflowJob.fullName}: Aborting due to dependency currently building: ${upstreamWorkflowJob.fullName} #${lastBuild.number}")
           }
-          def result = lastBuild.result;
+          def result = lastBuild.result
           if (result != hudson.model.Result.SUCCESS) {
             throw new IllegalStateException("${currentWorkflowJob.fullName}: Aborting due to dependency last build not successful: ${upstreamWorkflowJob.fullName} #${lastBuild.number} is $result")
           }
         }
       } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
         // rethrow timeout
-        throw e;
+        throw e
       } catch (IllegalStateException e) {
         // It is assumed the only cause of IllegalStateException is our own throws
         catchError(message: 'Aborted due to dependencies not ready', buildResult: 'ABORTED', stageResult: 'ABORTED') {
@@ -792,7 +792,7 @@ def checkReadySteps() {
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -857,7 +857,7 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -879,7 +879,7 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -915,7 +915,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -943,7 +943,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -989,7 +989,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -1012,7 +1012,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
           ) {
             sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
           }
-          def run = currentBuild.rawBuild;
+          def run = currentBuild.rawBuild
           // Only keep the most recent action
           run.getActions(ParametersAction)
              .findAll { it?.getParameter(Constants.SONAR_GIT_COMMIT) || it?.getParameter(Constants.SONAR_ANALYSIS_TIME) }
@@ -1033,7 +1033,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -1049,7 +1049,7 @@ def qualityGateSteps() {
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
@@ -1083,7 +1083,7 @@ def analysisSteps() {
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
       echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e;
+      throw e
     }
     if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
       error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
