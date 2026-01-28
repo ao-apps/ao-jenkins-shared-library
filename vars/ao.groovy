@@ -119,7 +119,6 @@ def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
-  binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
 
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
   binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
@@ -309,6 +308,10 @@ def setVariables(binding, currentBuild, scm, params) {
 
   if (!binding.hasVariable('sonarQubeAnalysis_choices')) {
     binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
+  }
+
+  if (!binding.hasVariable('sonarQubeAnalysis_description')) {
+    binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
   }
 
   if (!binding.hasVariable('sonarqubeEnabledExpression')) {
