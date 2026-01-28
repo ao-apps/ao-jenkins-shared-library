@@ -104,8 +104,15 @@ extraProfiles
 
 testWhenExpression
 
-   A closure determining when to run tests.
-   Defaults to {return fileExists(projectDir + '/src/test')}
+    A closure determining when to run tests.
+    Defaults to {return fileExists(projectDir + '/src/test')}
+
+sonarQubeAnalysis_choices
+    The choices for the sonarQubeAnalysis parameter.
+    Defaults to:
+      ['Auto', 'Force', 'Skip']
+    Consider setting this when altering sonarqubeEnabledExpression, for example:
+      ['Skip (SonarQube Disabled)']
 
 sonarqubeEnabledExpression
 

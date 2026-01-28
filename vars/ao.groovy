@@ -116,7 +116,6 @@ def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
-  binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
   binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
 
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
@@ -304,6 +303,10 @@ def setVariables(binding, currentBuild, scm, params) {
   // Determine nice command prefix or empty string for none
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
   binding.setVariable('niceCmd', niceCmd)
+
+  if (!binding.hasVariable('sonarQubeAnalysis_choices')) {
+    binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
+  }
 
   if (!binding.hasVariable('sonarqubeEnabledExpression')) {
     binding.setVariable('sonarqubeEnabledExpression', {
