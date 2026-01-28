@@ -41,6 +41,8 @@ or any build that adds or removes build artifacts."""
   static final String mavenDebug_description = """Enables Maven -X debug output.
 Defaults to false and will typically only be true when debugging the build process itself."""
 
+  static final List<String> sonarQubeAnalysis_choices = Collections.unmodifiableList(['Auto', 'Force', 'Skip'])
+
   static final String sonarQubeAnalysis_description = """Enables Maven -X debug output.
 Defaults to false and will typically only be true when debugging the build process itself."""
 }
@@ -114,6 +116,7 @@ def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
+  binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
   binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
 
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
@@ -316,12 +319,6 @@ def setVariables(binding, currentBuild, scm, params) {
   }
   def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression');
 
-  def sonarqubeEnabled = sonarqubeEnabledExpression.call();
-  binding.setVariable('sonarqubeEnabled', sonarqubeEnabled);
-
-  // Set choice based on whether SonarQube is enabled
-  binding.setVariable('sonarQubeAnalysis_choices', sonarqubeEnabled ? ['Skip (SonarQube Disabled)'] : ['Auto', 'Force', 'Skip'])
-
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
     def sonarqubeWhenExpressionResult = null
@@ -331,7 +328,7 @@ def setVariables(binding, currentBuild, scm, params) {
 
       def compute = {
         // Must be enabled
-        if (!sonarqubeEnabled) {
+        if (!sonarqubeEnabledExpression()) {
           echo "sonarqubeWhenExpression: SonarQube is not enabled on the project, skipping."
           return false
         }
