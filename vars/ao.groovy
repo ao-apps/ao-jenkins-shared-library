@@ -361,13 +361,15 @@ def setVariables(binding, currentBuild, scm, params) {
 
       def compute = {
         // Must be enabled
-        if (!sonarqubeEnabledExpression()) {
-          def run = currentBuild.rawBuild;
-          run.addAction(new ParametersAction(
-              new BooleanParameterValue(Constants.SONAR_ENABLED, false)
-          ))
-          run.save()
-          echo "sonarqubeWhenExpression: SonarQube disabled on this project: saved ${Constants.SONAR_ENABLED} = false, skipping."
+        def sonarEnabled = sonarqubeEnabledExpression()
+        def run = currentBuild.rawBuild
+        run.addAction(new ParametersAction(
+            new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
+        ))
+        run.save()
+        echo "sonarQubeAnalysisSteps: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
+        if (!sonarEnabled) {
+          echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
           return false
         }
 
@@ -385,7 +387,7 @@ def setVariables(binding, currentBuild, scm, params) {
         // Find the most recent build that ran SonarQube analysis
         def lastAnalysisGitCommit = null
         def lastAnalysisTime = null
-        def previous = currentBuild.rawBuild.previousBuild
+        def previous = run.previousBuild
         while (previous != null) {
           // Check all ParametersAction in this build
           if (previous.getActions(ParametersAction).find {
@@ -1020,7 +1022,6 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             returnStdout: true
           ).trim()
           run.addAction(new ParametersAction(
-              new BooleanParameterValue(Constants.SONAR_ENABLED, true),
               new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
               new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
           ))
