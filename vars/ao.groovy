@@ -40,6 +40,9 @@ or any build that adds or removes build artifacts."""
 
   static final String mavenDebug_description = """Enables Maven -X debug output.
 Defaults to false and will typically only be true when debugging the build process itself."""
+
+  static final String sonarQubeAnalysis_description = """Enables Maven -X debug output.
+Defaults to false and will typically only be true when debugging the build process itself."""
 }
 
 /*
@@ -111,6 +114,7 @@ def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
+  binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
 
   binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
   binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
@@ -298,6 +302,23 @@ def setVariables(binding, currentBuild, scm, params) {
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
   binding.setVariable('niceCmd', niceCmd)
 
+  if (!binding.hasVariable('sonarqubeEnabledExpression')) {
+    binding.setVariable('sonarqubeEnabledExpression', {
+      // Do not run SonarQube for projects that are run in GitHub Actions.
+      // They use sonarcloud.io instead.
+      return !fileExists(
+        projectDir + '/.github/workflows/build.yml'
+      )
+    })
+  }
+  def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression');
+
+  def sonarqubeEnabled = sonarqubeEnabledExpression.call();
+  binding.setVariable('sonarqubeEnabled', sonarqubeEnabled);
+
+  // Set choice based on whether SonarQube is enabled
+  binding.setVariable('sonarQubeAnalysis_choices', sonarqubeEnabled ? ['Skip (SonarQube Disabled)'] : ['Auto', 'Force', 'Skip'])
+
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
     def sonarqubeWhenExpressionResult = null
@@ -306,10 +327,20 @@ def setVariables(binding, currentBuild, scm, params) {
       if (sonarqubeWhenExpressionResult != null) return sonarqubeWhenExpressionResult
 
       def compute = {
-        // Do not run SonarQube for projects that are run in GitHub Actions.
-        // They use sonarcloud.io instead.
-        if (fileExists(projectDir + '/.github/workflows/build.yml')) {
-          echo "sonarqubeWhenExpression: project uses sonarcloud.io via GitHub Actions, skipping"
+        // Must be enabled
+        if (!sonarqubeEnabled) {
+          echo "sonarqubeWhenExpression: SonarQube is not enabled on the project, skipping."
+          return false
+        }
+
+        // Support manual configuration via parameters
+        def sonarQubeAnalysisMode = params.sonarQubeAnalysis ?: 'Auto'
+        if (sonarQubeAnalysisMode == 'Force') {
+          echo "sonarqubeWhenExpression: analysis forced by parameter."
+          return true
+        }
+        if (sonarQubeAnalysisMode == 'Skip') {
+          echo "sonarqubeWhenExpression: analysis skipped by parameter."
           return false
         }
 

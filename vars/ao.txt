@@ -107,14 +107,24 @@ testWhenExpression
    A closure determining when to run tests.
    Defaults to {return fileExists(projectDir + '/src/test')}
 
-sonarqubeWhenExpression
+sonarqubeEnabledExpression
 
-    A closure determining when to perform SonarQube analysis.
+    A closure determining when SonarQube analysis is enabled.
     Defaults to {
         return !fileExists(
             projectDir + '/.github/workflows/build.yml'
         )
     }
+
+sonarqubeWhenExpression
+
+    A closure determining when to perform SonarQube analysis.
+    The default requires SonarQube enabled (see sonarqubeEnabledExpression above).
+    Furthermore, requires at least one of the following conditions:
+        1) analysis has not yet been performed
+        2) last analysis time is in the future (system clock change detected)
+        3) last analysis time was 6 days ago or longer
+        4) any file has been changed since the last analysis
 
 failureEmailTo
 
