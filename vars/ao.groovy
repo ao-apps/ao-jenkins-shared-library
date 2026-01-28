@@ -365,7 +365,7 @@ def setVariables(binding, currentBuild, scm, params) {
             new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
         ))
         run.save()
-        echo "sonarQubeAnalysisSteps: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
+        echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
         if (!sonarEnabled) {
           echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
           return false
