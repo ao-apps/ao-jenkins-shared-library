@@ -43,7 +43,10 @@ Defaults to false and will typically only be true when debugging the build proce
 
   static final List<String> sonarQubeAnalysis_choices = Collections.unmodifiableList(['Auto', 'Force', 'Skip'])
 
-  static final String sonarQubeAnalysis_description = """Enables Maven -X debug output.
+  static final String sonarQubeAnalysis_description = """Selects whether to perform the SonarQube analysis.
+'Auto' will analyze when a file has changed or when it has been at least six days since the last analysis.
+'Force' to perform the analysis even when it would not be done with 'Auto'.
+'Skip' to not perform the analysis.
 Defaults to false and will typically only be true when debugging the build process itself."""
 }
 
