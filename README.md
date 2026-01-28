@@ -34,10 +34,6 @@ least six days since the last analysis.  We will also trigger an off-hours full 
 on weekdays will only analyze projects that have actually been changed.  This should speed our overall multi-agent
 builds that are currently bottlenecked waiting on our single SonarQube instance.
 
-Tracking the data to reliably determine when to perform the analysis requires attaching arbitrary data to the build.
-For this, we will be creating a custom [`hudson.model.Action`](https://javadoc.jenkins.io/hudson/model/Action.html)
-in this shared library.
-
 ## Contact Us
 For questions or support, please [contact us](https://aoindustries.com/contact):
 
