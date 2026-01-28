@@ -503,8 +503,6 @@ private def getUpstreamProjects(jenkins, upstreamProjectsCache, workflowJob) {
             upstreamProjects << upstreamProject
           }
         }
-      } else {
-        throw new Exception("$fullName: trigger is not a ReverseBuildTrigger: $upstreamFullName -> $trigger")
       }
     }
     upstreamProjectsCache[fullName] = upstreamProjects
