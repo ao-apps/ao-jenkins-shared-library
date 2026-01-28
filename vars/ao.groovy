@@ -313,11 +313,8 @@ def setVariables(binding, currentBuild, scm, params) {
   }
   def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression');
 
-  def sonarqubeEnabled = sonarqubeEnabledExpression.call();
-  binding.setVariable('sonarqubeEnabled', sonarqubeEnabled);
-
   // Set choice based on whether SonarQube is enabled
-  binding.setVariable('sonarQubeAnalysis_choices', sonarqubeEnabled ? ['Skip (SonarQube Disabled)'] : ['Auto', 'Force', 'Skip'])
+  binding.setVariable('sonarQubeAnalysis_choices', {sonarqubeEnabledExpression() ? ['Auto', 'Force', 'Skip'] : ['Skip (SonarQube Disabled)']})
 
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
@@ -328,7 +325,7 @@ def setVariables(binding, currentBuild, scm, params) {
 
       def compute = {
         // Must be enabled
-        if (!sonarqubeEnabled) {
+        if (!sonarqubeEnabledExpression()) {
           echo "sonarqubeWhenExpression: SonarQube is not enabled on the project, skipping."
           return false
         }
