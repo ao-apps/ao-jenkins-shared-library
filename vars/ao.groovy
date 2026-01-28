@@ -306,9 +306,12 @@ def setVariables(binding, currentBuild, scm, params) {
     binding.setVariable('sonarqubeEnabledExpression', {
       // Do not run SonarQube for projects that are run in GitHub Actions.
       // They use sonarcloud.io instead.
-      return !fileExists(
-        projectDir + '/.github/workflows/build.yml'
-      )
+      //
+      // Using 'git ls-tree' because fileExists function not available at this point in time
+      return sh(
+        script: "git ls-tree --name-only HEAD -- '${projectDir}/.github/workflows/build.yml'",
+        returnStdout: true
+      ).trim() != ''
     })
   }
   def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression');
