@@ -41,7 +41,7 @@ or any build that adds or removes build artifacts."""
   static final String mavenDebug_description = """Enables Maven -X debug output.
 Defaults to false and will typically only be true when debugging the build process itself."""
 
-  static final List<String> sonarQubeAnalysis_choices = Collections.unmodifiableList(['Auto', 'Force', 'Skip'])
+  static final List<String> sonarQubeAnalysis_choices = ['Auto', 'Force', 'Skip'].asImmutable()
 
   static final String sonarQubeAnalysis_description = """Selects whether to perform the SonarQube analysis.
 'Auto' will analyze when a file has changed or when it has been at least six days since the last analysis.
