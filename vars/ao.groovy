@@ -362,13 +362,12 @@ def setVariables(binding, currentBuild, scm, params) {
       def compute = {
         // Must be enabled
         if (!sonarqubeEnabledExpression()) {
-          echo "sonarqubeWhenExpression: SonarQube is not enabled on the project, skipping."
           def run = currentBuild.rawBuild;
           run.addAction(new ParametersAction(
               new BooleanParameterValue(Constants.SONAR_ENABLED, false)
           ))
           run.save()
-          echo "sonarqubeWhenExpression: SonarQube disabled: saved: ${Constants.SONAR_ENABLED} = false"
+          echo "sonarqubeWhenExpression: SonarQube disabled on this project: saved ${Constants.SONAR_ENABLED} = false, skipping."
           return false
         }
 
