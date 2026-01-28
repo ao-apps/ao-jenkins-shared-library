@@ -109,10 +109,11 @@ testWhenExpression
 
 sonarQubeAnalysis_choices
     The choices for the sonarQubeAnalysis parameter.
-    Defaults to:
-      ['Auto', 'Force', 'Skip']
-    Consider setting this when altering sonarqubeEnabledExpression, for example:
-      ['Skip (SonarQube Disabled)']
+    Defaults depend on the result of sonarqubeEnabledExpression from the previous run:
+      sonarqubeEnabledExpression not found or returned true:
+          ['Auto', 'Force', 'Skip']
+      sonarqubeEnabledExpression returned false:
+          ['Skip (SonarQube Disabled)']
 
 sonarQubeAnalysis_description
     The description for the sonarQubeAnalysis parameter.

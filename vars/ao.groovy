@@ -23,6 +23,7 @@
  */
 
 import hudson.model.ParametersAction
+import hudson.model.BooleanParameterValue
 import hudson.model.StringParameterValue
 
 class Parameters {
@@ -42,6 +43,8 @@ or any build that adds or removes build artifacts."""
 Defaults to false and will typically only be true when debugging the build process itself."""
 
   static final List<String> sonarQubeAnalysis_choices = ['Auto', 'Force', 'Skip'].asImmutable()
+
+  static final List<String> sonarQubeAnalysis_choices_disabled = ['Skip (SonarQube Disabled)'].asImmutable()
 
   static final String sonarQubeAnalysis_description = """Selects whether to perform the SonarQube analysis.
 'Auto' will analyze when a file has changed or when it has been at least six days since the last analysis.
@@ -96,6 +99,12 @@ class Timeouts {
  * Constants used internally within ao.groovy.
  */
 class Constants {
+
+  /**
+   * The name used for parameter holding the boolean if SonarQube enabled.
+   * Is stored even when the analysis itself is not performed.
+   */
+  static final String SONAR_ENABLED = 'SONAR_ENABLED'
 
   /**
    * The name used for parameter holding the git commit of the SonarQube analysis.
@@ -307,7 +316,22 @@ def setVariables(binding, currentBuild, scm, params) {
   binding.setVariable('niceCmd', niceCmd)
 
   if (!binding.hasVariable('sonarQubeAnalysis_choices')) {
-    binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
+    def lastAnalysisEnabled = null
+    def previous = currentBuild.rawBuild.previousBuild
+    while (previous != null) {
+      // Check all ParametersAction in this build
+      if (previous.getActions(ParametersAction).find {
+        (lastAnalysisEnabled = it?.getParameter(Constants.SONAR_ENABLED)?.value) != null
+      }) {
+        break
+      }
+      previous = previous.previousBuild
+    }
+    if (lastAnalysisEnabled == null || lastAnalysisEnabled) {
+      binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
+    } else {
+      binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices_disabled)
+    }
   }
 
   if (!binding.hasVariable('sonarQubeAnalysis_description')) {
@@ -339,6 +363,12 @@ def setVariables(binding, currentBuild, scm, params) {
         // Must be enabled
         if (!sonarqubeEnabledExpression()) {
           echo "sonarqubeWhenExpression: SonarQube is not enabled on the project, skipping."
+          def run = currentBuild.rawBuild;
+          run.addAction(new ParametersAction(
+              new BooleanParameterValue(Constants.SONAR_ENABLED, false)
+          ))
+          run.save()
+          echo "sonarqubeWhenExpression: SonarQube disabled: saved: ${Constants.SONAR_ENABLED} = false"
           return false
         }
 
@@ -991,6 +1021,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             returnStdout: true
           ).trim()
           run.addAction(new ParametersAction(
+              new BooleanParameterValue(Constants.SONAR_ENABLED, true),
               new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
               new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
           ))
