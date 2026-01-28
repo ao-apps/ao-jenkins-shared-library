@@ -123,19 +123,21 @@ class Constants {
   static final int SONAR_REANALYZE_DAYS = 6
 }
 
-/**
- * Wraps a closure to memoize its result after the first call.
- * Works for any return value, including false or null.
- */
-def memoize = { Closure c ->
-  def cached = null
-  def computed = false
-  return {
-    if (!computed) {
-      cached = c.call()
-      computed = true
+class Utils {
+  /**
+   * Wraps a closure to memoize its result after the first call.
+   * Works for any return value, including false or null.
+   */
+  static Closure memoize(Closure c) {
+    def cached = null
+    def computed = false
+    return {
+      if (!computed) {
+        cached = c.call()
+        computed = true
+      }
+      return cached
     }
-    return cached
   }
 }
 
@@ -369,7 +371,7 @@ def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
     def sonarqubeWhenExpressionResult = null
-    binding.setVariable('sonarqubeWhenExpression', memoize {
+    binding.setVariable('sonarqubeWhenExpression', Utils.memoize {
       // Must be enabled
       def sonarEnabled = sonarqubeEnabledExpression()
       def run = currentBuild.rawBuild
