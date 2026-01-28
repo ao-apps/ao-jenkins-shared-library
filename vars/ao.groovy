@@ -174,8 +174,8 @@ def setVariables(binding, currentBuild, scm, params) {
 
   if (!binding.hasVariable('cron')) {
     binding.setVariable('cron', upstreamProjects ?
-      'H 4 * * 0' : // Sunday 10 PM CST
-      '0 0 31 2 *'  // Never
+      '0 0 31 2 *': // Never
+      'H 4 * * 0'   // Sunday 10 PM CST
     )
   }
 
