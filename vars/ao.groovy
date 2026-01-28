@@ -141,53 +141,47 @@ class Utils {
   }
 }
 
-/*
- * See https://plugins.jenkins.io/build-history-manager/
- */
-private def defaultBuildDiscarder() {
-  return BuildHistoryManager([
-    [
-      // Keep most recent not_built build, which is useful to know which
-      // builds have been superseded during their quiet period.
-      conditions: [BuildResult(
-        matchNotBuilt: true
-      )],
-      matchAtMost: 1,
-      continueAfterMatch: false
-    ],
-    [
-      // Keep most recent aborted build, which is useful to know what the build is waiting for
-      // and to see that the build is still pending in Active and Blinkenlichten views.
-      conditions: [BuildResult(
-        matchAborted: true
-      )],
-      matchAtMost: 1,
-      continueAfterMatch: false
-    ],
-    [
-      // Keep most recent 50 success/unstable/failure builds
-      conditions: [BuildResult(
-        // All statuses except ABORTED from
-        // https://github.com/jenkinsci/build-history-manager-plugin/blob/master/src/main/java/pl/damianszczepanik/jenkins/buildhistorymanager/model/conditions/BuildResultCondition.java
-        matchSuccess: true,
-        matchUnstable: true,
-        matchFailure: true
-      )],
-      matchAtMost: 50,
-      continueAfterMatch: false
-    ],
-    [
-      actions: [DeleteBuild()]
-    ]
-  ])
-}
-
 def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('buildDiscarder')) {
-    binding.setVariable('buildDiscarder', defaultBuildDiscarder())
+    // See https://plugins.jenkins.io/build-history-manager/
+    binding.setVariable('buildDiscarder', BuildHistoryManager([
+      [
+        // Keep most recent not_built build, which is useful to know which
+        // builds have been superseded during their quiet period.
+        conditions: [BuildResult(
+          matchNotBuilt: true
+        )],
+        matchAtMost: 1,
+        continueAfterMatch: false
+      ],
+      [
+        // Keep most recent aborted build, which is useful to know what the build is waiting for
+        // and to see that the build is still pending in Active and Blinkenlichten views.
+        conditions: [BuildResult(
+          matchAborted: true
+        )],
+        matchAtMost: 1,
+        continueAfterMatch: false
+      ],
+      [
+        // Keep most recent 50 success/unstable/failure builds
+        conditions: [BuildResult(
+          // All statuses except ABORTED from
+          // https://github.com/jenkinsci/build-history-manager-plugin/blob/master/src/main/java/pl/damianszczepanik/jenkins/buildhistorymanager/model/conditions/BuildResultCondition.java
+          matchSuccess: true,
+          matchUnstable: true,
+          matchFailure: true
+        )],
+        matchAtMost: 50,
+        continueAfterMatch: false
+      ],
+      [
+        actions: [DeleteBuild()]
+      ]
+    ]))
   }
 
-binding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
+  binding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
