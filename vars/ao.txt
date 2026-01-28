@@ -114,6 +114,10 @@ sonarQubeAnalysis_choices
     Consider setting this when altering sonarqubeEnabledExpression, for example:
       ['Skip (SonarQube Disabled)']
 
+sonarQubeAnalysis_description
+    The description for the sonarQubeAnalysis parameter.
+    Consider setting this when altering sonarqubeEnabledExpression.
+
 sonarqubeEnabledExpression
 
     A closure determining when SonarQube analysis is enabled.
