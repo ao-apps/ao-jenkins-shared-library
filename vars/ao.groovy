@@ -172,6 +172,13 @@ def setVariables(binding, currentBuild, scm, params) {
   }
   def upstreamProjects = binding.getVariable('upstreamProjects')
 
+  if (!binding.hasVariable('cron')) {
+    binding.setVariable('cron', upstreamProjects ?
+      'H 4 * * 0' : // Sunday 10 PM CST
+      '0 0 31 2 *'  // Never
+    )
+  }
+
   if (!binding.hasVariable('projectDir')) {
     def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
     def defaultProjectDir

@@ -22,6 +22,17 @@ upstreamProjects
     The array of relative paths to upstream projects.
     Defaults to []
 
+cron
+
+    The cron schedule for this project.
+    The default is derived from upstreamProjects:
+        When upstreamProjects is empty:
+            'H 4 * * 0'  (Sunday 10 PM CST) for projects with no upstream.
+        When upstreamProjects is non-empty:
+            '0 0 31 2 *' (Never) for projects that have at least one upstream,
+                                 since this job will be triggered by upstreams
+                                 once their cron-based builds finish.
+
 projectDir
 
     The directory within the workspace containing the Maven project.
