@@ -911,35 +911,40 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+shopt -s nullglob
+
 # Redirect output to stderr.
 exec 1>&2
 
 projectDir="\$(${niceCmd}git rev-parse --show-toplevel)"
 
-if [ -d "\${projectDir}/src" ]
-then
-  errs="\$(
-    ${niceCmd}find "\${projectDir}/src" \\
-      -not \\( -name .git -prune \\) \\
-      -not \\( -name .m2 -prune \\) \\
-      -not \\( -name target -prune \\) \\
-      -name '*.java' \\
-      -exec grep -E '^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#' -H -n '{}' + \\
-      || [ \$? -eq 1 ]
-  )"
-
-  if [ "\$errs" != '' ]
+for srcdir in "\${projectDir}/src" "\${projectDir}"/*/src
+do
+  if [ -d "\$srcdir" ]
   then
-    echo -e '\\e[0;33m' # Yellow, matching the color of Git warnings
-    echo 'Unqualified javadoc references detected.  These can break reproducible builds:'
-    echo ''
-    echo "\$errs"
-    echo ''
-    echo 'Please resolve with "add-classname-to-unqualified-javadocs"'
-    echo -e '\\e[0m'
-    exit 1
+    errs="\$(
+      ${niceCmd}find "\$srcdir" \\
+        -not \\( -name .git -prune \\) \\
+        -not \\( -name .m2 -prune \\) \\
+        -not \\( -name target -prune \\) \\
+        -name '*.java' \\
+        -exec grep -E '^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#' -H -n '{}' + \\
+        || [ \$? -eq 1 ]
+    )"
+
+    if [ "\$errs" != '' ]
+    then
+      echo -e '\\e[0;33m' # Yellow, matching the color of Git warnings
+      echo 'Unqualified javadoc references detected.  These can break reproducible builds:'
+      echo ''
+      echo "\$errs"
+      echo ''
+      echo 'Please resolve with "add-classname-to-unqualified-javadocs"'
+      echo -e '\\e[0m'
+      exit 1
+    fi
   fi
-fi
+done
 exit 0
 """
     }
