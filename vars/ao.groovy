@@ -916,35 +916,25 @@ shopt -s nullglob
 # Redirect output to stderr.
 exec 1>&2
 
-projectDir="\$(${niceCmd}git rev-parse --show-toplevel)"
+cd "\$(${niceCmd}git rev-parse --show-toplevel)"
 
-for srcdir in "\${projectDir}/src" "\${projectDir}"/*/src
-do
-  if [ -d "\$srcdir" ]
-  then
-    errs="\$(
-      ${niceCmd}find "\$srcdir" \\
-        -not \\( -name .git -prune \\) \\
-        -not \\( -name .m2 -prune \\) \\
-        -not \\( -name target -prune \\) \\
-        -name '*.java' \\
-        -exec grep -E '^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#' -H -n '{}' + \\
-        || [ \$? -eq 1 ]
-    )"
+errs="\$(
+  ${niceCmd}git ls-files '*.java' | \\
+    ${niceCmd}xargs -r grep -E '^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#' -H -n \\
+    || [[ \$? -le 1 ]]
+)"
 
-    if [ "\$errs" != '' ]
-    then
-      echo -e '\\e[0;33m' # Yellow, matching the color of Git warnings
-      echo 'Unqualified javadoc references detected.  These can break reproducible builds:'
-      echo ''
-      echo "\$errs"
-      echo ''
-      echo 'Please resolve with "add-classname-to-unqualified-javadocs"'
-      echo -e '\\e[0m'
-      exit 1
-    fi
-  fi
-done
+if [ "\$errs" != '' ]
+then
+  echo -e '\\e[0;33m' # Yellow, matching the color of Git warnings
+  echo 'Unqualified javadoc references detected.  These can break reproducible builds:'
+  echo ''
+  echo "\$errs"
+  echo ''
+  echo 'Please resolve with "add-classname-to-unqualified-javadocs"'
+  echo -e '\\e[0m'
+  exit 1
+fi
 exit 0
 """
     }
