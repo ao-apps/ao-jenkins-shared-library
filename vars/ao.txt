@@ -128,6 +128,7 @@ testWhenExpression
     Defaults to {return fileExists(projectDir + '/src/test')}
 
 sonarQubeAnalysis_choices
+
     The choices for the sonarQubeAnalysis parameter.
     Defaults depend on the result of sonarqubeEnabledExpression from the previous run:
       sonarqubeEnabledExpression not found or returned true:
@@ -136,6 +137,7 @@ sonarQubeAnalysis_choices
           ['Skip (SonarQube Disabled)']
 
 sonarQubeAnalysis_description
+
     The description for the sonarQubeAnalysis parameter.
     Consider setting this when altering sonarqubeEnabledExpression.
 
