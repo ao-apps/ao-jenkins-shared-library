@@ -71,6 +71,7 @@ class Timeouts {
 
   // Individual steps
   static final int CHECK_READY_STEPS_TIMEOUT          = 15
+  static final int CODE_POLICY_CHECK_STEPS_TIMEOUT    = 15
   static final int WORKAROUND_GIT_27287_STEPS_TIMEOUT = 15
   static final int CHECKOUT_SCM_STEPS_TIMEOUT         = 15
   static final int BUILD_STEPS_TIMEOUT                = 60
@@ -84,6 +85,7 @@ class Timeouts {
   static final int PIPELINE_TIMEOUT = (
     30 + // Cushion
     CHECK_READY_STEPS_TIMEOUT +
+    CODE_POLICY_CHECK_STEPS_TIMEOUT +
     WORKAROUND_GIT_27287_STEPS_TIMEOUT +
     CHECKOUT_SCM_STEPS_TIMEOUT +
     BUILD_STEPS_TIMEOUT +
@@ -887,6 +889,59 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
       sh "${niceCmd}git clean -fx -e ${(projectDir == '.') ? '/.m2' : ('/' + projectDir + '/.m2')}"
       // Make sure working tree not modified after checkout
       sh checkTreeUnmodifiedScriptCheckout(niceCmd)
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
+def codePolicyCheckSteps(niceCmd) {
+  try {
+    timeout(time: Timeouts.CODE_POLICY_CHECK_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
+      // See also: docs-ao:developer/bin/add-classname-to-unqualified-javadocs
+      // See also: docs-ao:developer/git-hooks/pre-commit.check-javadocs
+      sh """#!/bin/bash
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Redirect output to stderr.
+exec 1>&2
+
+projectDir="\$(${niceCmd}git rev-parse --show-toplevel)"
+
+if [ -d "\${projectDir}/src" ]
+then
+  errs="\$(
+    ${niceCmd}find "\${projectDir}/src" \\
+      -not \\( -name .git -prune \\) \\
+      -not \\( -name .m2 -prune \\) \\
+      -not \\( -name target -prune \\) \\
+      -name '*.java' \\
+      -exec grep -E '^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#' -H -n '{}' + \\
+      || [ \$? -eq 1 ]
+  )"
+
+  if [ "\$errs" != '' ]
+  then
+    echo -e '\\e[0;33m' # Yellow, matching the color of Git warnings
+    echo 'Unqualified javadoc references detected.  These can break reproducible builds:'
+    echo ''
+    echo "\$errs"
+    echo ''
+    echo 'Please resolve with "add-classname-to-unqualified-javadocs"'
+    echo -e '\\e[0m'
+    exit 1
+  fi
+fi
+exit 0
+"""
     }
   } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
     if (e.isActualInterruption()) {
