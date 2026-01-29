@@ -918,12 +918,7 @@ exec 1>&2
 
 cd "\$(${niceCmd}git rev-parse --show-toplevel)"
 
-errs="\$(
-  ${niceCmd}git ls-files '*.java' | \\
-    ${niceCmd}xargs -r bash -c '
-      grep -E '\\''^\\s*/?\\*+.*{?@(link|linkplain|see)\\s+#'\\'' -H -n "\$@" || [[ \$? -le 1 ]]
-    ' _
-)"
+errs="\$(${niceCmd}git grep -n -E '^\\s*/?\\*+.*\\{?@(link|linkplain|see)\\s+#' -- '*.java' || [[ \$? -le 1 ]])"
 
 if [ "\$errs" != '' ]
 then
