@@ -1,5 +1,14 @@
 Variables that may be defined in the header of Jenkinsfile:
 
+buildDiscarder
+
+    The buildDiscarder for this project.
+    Defaults to BuildHistoryManager that:
+        1) Keeps most recent not_built build
+        2) Keeps most recent aborted build
+        3) Keeps most recent 50 success/unstable/failure builds
+    See https://plugins.jenkins.io/build-history-manager/
+
 deployJdk
 
     The version of JDK that will be used for the deploy stage.
