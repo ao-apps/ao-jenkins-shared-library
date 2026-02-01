@@ -480,21 +480,30 @@ def setVariables(binding, currentBuild, scm, params) {
 set -e
 set -o pipefail
 set -f
-# Paths are relative to the Git repository root
-cd "\$(${niceCmd}git rev-parse --show-toplevel)"
-# Convert sparse checkout to Git pathspecs
-mapfile -t pathspecs < <(
-  git sparse-checkout list |
-  sed -e 's#^/##' \
-      -e 's#^!#:(exclude)#' \
-      -e 's#:(exclude)/#:(exclude)#' \
-      -e 's#/\$#/**#'
-)
-${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
+# Make sure previous commit still exists
+if git cat-file -e '${lastAnalysisGitCommit}^{commit}'
+then
+  # Paths are relative to the Git repository root
+  cd "\$(${niceCmd}git rev-parse --show-toplevel)"
+  # Convert sparse checkout to Git pathspecs
+  mapfile -t pathspecs < <(
+    git sparse-checkout list |
+    sed -e 's#^/##' \
+        -e 's#^!#:(exclude)#' \
+        -e 's#:(exclude)/#:(exclude)#' \
+        -e 's#/\$#/**#'
+  )
+  ${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
+else
+  echo -1
+fi
 """,
         returnStdout: true
       ).trim().toInteger()
-      if (numChanges > 0) {
+      if (numChanges == -1) {
+        echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
+        return true
+      } else if (numChanges > 0) {
         echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
         return true
       } else {
