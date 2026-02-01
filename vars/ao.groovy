@@ -481,7 +481,7 @@ set -e
 set -o pipefail
 set -f
 # Make sure previous commit still exists
-if git cat-file -e '${lastAnalysisGitCommit}^{commit}'
+if ${niceCmd}git cat-file -e '${lastAnalysisGitCommit}^{commit}'
 then
   # Paths are relative to the Git repository root
   cd "\$(${niceCmd}git rev-parse --show-toplevel)"
