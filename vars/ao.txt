@@ -14,6 +14,9 @@ deployJdk
     The version of JDK that will be used for the deploy stage.
     Defaults to '21'
 
+    If the project also builds with GitHub Actions,
+    set "java-version" in build.yml to match.
+
 buildJdks
 
     The array of JDK versions that will build.
