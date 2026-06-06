@@ -195,17 +195,32 @@ def setVariables(binding, currentBuild, scm, params) {
     // Matches build.yml:java-version
     binding.setVariable('deployJdk', '21')
   }
+  def deployJdk = binding.getVariable('deployJdk')
+
   if (!binding.hasVariable('buildJdks')) {
     binding.setVariable(
       'buildJdks',
       ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes.
     )
   }
+  def buildJdks = binding.getVariable('buildJdks')
+  if (!buildJdks.contains(deployJdk)) {
+    throw new Exception("Invalid configuration: deployJdk ($deployJdk) must be in buildJdks ($buildJdks)")
+  }
+
   if (!binding.hasVariable('testJdks')) {
     binding.setVariable(
       'testJdks',
       ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes.
     )
+  }
+  def testJdks = binding.getVariable('testJdks')
+  if (!testJdks.contains(deployJdk)) {
+    throw new Exception("Invalid configuration: deployJdk ($deployJdk) must be in testJdks ($testJdks)")
+  }
+  def missing = testJdks.findAll { !buildJdks.contains(it) }
+  if (!missing.isEmpty()) {
+    throw new Exception("Invalid configuration: testJdks contains values not in buildJdks: $missing")
   }
 
   if (!binding.hasVariable('upstreamProjects')) {
