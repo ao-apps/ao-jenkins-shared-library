@@ -983,12 +983,12 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
         }
       }
       script {
-        // Create a separate copy for full test matrix
-        if (testWhenExpression.call()) {
+        // Create a separate copy for "Deploy Tests" stage
+        if (jdk == deployJdk && testWhenExpression.call()) {
           testJdks.each() {testJdk ->
-            if (testJdk != jdk) {
-              sh "${niceCmd}rm $projectDir/target-jdk-$jdk-$testJdk -rf"
-              sh "${niceCmd}cp -al $projectDir/target${jdk == deployJdk ? '' : "-jdk-$jdk"} $projectDir/target-jdk-$jdk-$testJdk"
+            if (testJdk != deployJdk) {
+              sh "${niceCmd}rm $projectDir/target-jdk-$deployJdk-$testJdk -rf"
+              sh "${niceCmd}cp -al $projectDir/target $projectDir/target-jdk-$deployJdk-$testJdk"
             }
           }
         }
