@@ -1015,7 +1015,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
-          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          mavenLocalRepo: ".m2/repository-jdk-$testJdk",
           jdk: "jdk-$testJdk"
         ) {
           sh "${niceCmd}$MVN_CMD $mvnCommon -Dalt.build.dir=$buildDir $coverage $testGoals"
