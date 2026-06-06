@@ -198,13 +198,13 @@ def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('buildJdks')) {
     binding.setVariable(
       'buildJdks',
-      ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes!
+      ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes.
     )
   }
   if (!binding.hasVariable('testJdks')) {
     binding.setVariable(
       'testJdks',
-      ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes!
+      ['11', '17', '21', '25', '26'] // Changes must be copied to matrix axes.
     )
   }
 
