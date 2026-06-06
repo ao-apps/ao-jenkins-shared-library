@@ -911,6 +911,8 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
       sh "${niceCmd}git reset --hard"
       // git clean -fdx was iterating all of /.m2 despite being ignored
       sh "${niceCmd}git clean -fx -e ${(projectDir == '.') ? '/.m2' : ('/' + projectDir + '/.m2')}"
+      // Remove target directories not remove by "git clean" since are in .gitignore
+      sh "${niceCmd}rm $projectDir/target $projectDir/target-jdk-* -rf"
       // Make sure working tree not modified after checkout
       sh checkTreeUnmodifiedScriptCheckout(niceCmd)
     }
