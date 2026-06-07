@@ -987,7 +987,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           if (!fileExists(warmCacheMarker)) {
             lock(
               resource: "cold-cache-central-repository-rate-limit-${env.NODE_NAME}",
-              reason: "Rate limit access to Maven Central to avoid \"429 Too Many Requests\""
+              reason: "Serialize access to Maven Central to avoid \"429 Too Many Requests\""
             ) {
               sh buildCommand
               sh "${niceCmd}touch $warmCacheMarker"
