@@ -986,7 +986,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
           if (!fileExists(warmCacheMarker)) {
             lock(
-              resource: "cold-cache-central-repository-rate-limit-${env.NODE_NAME}",
+              resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
               reason: "Serialize access to Maven Central to avoid \"429 Too Many Requests\""
             ) {
               sh buildCommand
