@@ -975,13 +975,23 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   try {
     timeout(time: Timeouts.BUILD_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
       dir(projectDir) {
+        def mavenLocalRepo = ".m2/repository-jdk-$jdk"
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
-          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          mavenLocalRepo: mavenLocalRepo,
           jdk: "jdk-$jdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          def buildCommand="${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
+          if (!fileExists(warmCacheMarker)) {
+            lock(resource: "cold-cache-central-repository-rate-limit-${env.NODE_NAME}") {
+              sh buildCommand
+              sh "${niceCmd}touch $warmCacheMarker"
+            }
+          } else {
+            sh buildCommand
+          }
         }
       }
       script {
