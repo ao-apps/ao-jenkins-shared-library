@@ -119,6 +119,14 @@ class Constants {
   static final String SONAR_ANALYSIS_TIME = 'SONAR_ANALYSIS_TIME'
 
   /**
+   * The name used for parameter holding the value of global environment variable SONAR_ANALYZE_NOW_REASON
+   * at the time of the SonarQube analysis.  When the current environment variable value does not
+   * match that of the last analysis, the analysis will be performed regardless of git commit or
+   * last analysis time.
+   */
+  static final String SONAR_ANALYZE_NOW_REASON = 'SONAR_ANALYZE_NOW_REASON'
+
+  /**
    * The number of days to perform SonarQube analysis even when no files changed.
    * Six days selected so can analyze routinely on Sundays, then only do as-needed during the following weekdays.
    */
@@ -462,19 +470,30 @@ def setVariables(binding, currentBuild, scm, params) {
       // Find the most recent build that ran SonarQube analysis
       def lastAnalysisGitCommit = null
       def lastAnalysisTime = null
+      def lastAnalysisAnalyzeNowReason = null
       def previous = run.previousBuild
+      FIND_LAST_ANALYSIS:
       while (previous != null) {
-        // Check all ParametersAction in this build
-        if (previous.getActions(ParametersAction).find {
-          (lastAnalysisGitCommit = it?.getParameter(Constants.SONAR_GIT_COMMIT)?.value) &&
-          (lastAnalysisTime = it?.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong())
-        }) {
-          break
+        def actions = previous.getActions(ParametersAction)
+        for (action in actions) {
+          def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
+          def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
+          if (gitCommit != null && time != null) {
+            lastAnalysisGitCommit = gitCommit
+            lastAnalysisTime = time
+            lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
+            break FIND_LAST_ANALYSIS
+          }
         }
         previous = previous.previousBuild
       }
       if (lastAnalysisGitCommit == null) {
         echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
+        return true
+      }
+      def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
+      if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
+        echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
         return true
       }
       if (lastAnalysisTime != null) {
@@ -1118,12 +1137,19 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             script: "${niceCmd}git rev-parse HEAD",
             returnStdout: true
           ).trim()
-          run.addAction(new ParametersAction(
-              new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
-              new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
-          ))
+          def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
+          def params = [
+            new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
+            new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
+          ]
+          def msg = "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
+          if (envAnalyzeNowReason != null) {
+            params << new StringParameterValue(Constants.SONAR_ANALYZE_NOW_REASON, envAnalyzeNowReason)
+            msg += " for \"${envAnalyzeNowReason}\""
+          }
+          run.addAction(new ParametersAction(params))
           run.save()
-          echo "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
+          echo msg
         }
       }
     }
