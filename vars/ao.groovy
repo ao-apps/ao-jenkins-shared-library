@@ -146,7 +146,7 @@ class Constants {
    * Every stage that interacts with the agent will acquire a lock with the following label:
    * <code>"${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}"
    */
-  static final String STAGE_CONCURRENCY_LIMITER_PREFIX = "stage-concurrency-limiter-";
+  static final String STAGE_CONCURRENCY_LIMITER_PREFIX = "stage-concurrency-limiter-"
 }
 
 class Utils {
