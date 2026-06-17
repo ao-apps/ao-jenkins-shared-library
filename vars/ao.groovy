@@ -1025,7 +1025,7 @@ exit 0
   }
 }
 
-def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+private def doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
@@ -1041,19 +1041,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
             mavenLocalRepo: mavenLocalRepo,
             jdk: "jdk-$jdk"
           ) {
-            def buildCommand="${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
-            def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
-            if (!fileExists(warmCacheMarker)) {
-              lock(
-                resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
-                reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
-              ) {
-                sh buildCommand
-                sh "${niceCmd}touch $warmCacheMarker"
-              }
-            } else {
-              sh buildCommand
-            }
+            sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
           }
         }
         script {
@@ -1077,6 +1065,28 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
         error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
       }
     }
+  }
+}
+
+def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+  def mavenLocalRepo = ".m2/repository-jdk-$jdk"
+  def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
+  def warmCacheMarkerExists
+  dir(projectDir) {
+    warmCacheMarkerExists = fileExists(warmCacheMarker)
+  }
+  if (!warmCacheMarkerExists) {
+    lock(
+      resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
+      reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
+    ) {
+      doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
+      dir(projectDir) {
+        sh "${niceCmd}touch $warmCacheMarker"
+      }
+    }
+  } else {
+    doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
   }
 }
 
