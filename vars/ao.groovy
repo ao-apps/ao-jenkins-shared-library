@@ -925,8 +925,8 @@ private def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disa
  */
 def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Workaround Git #27287"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Workaround Git #27287"
   ) {
     try {
       timeout(time: Timeouts.WORKAROUND_GIT_27287_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -951,8 +951,8 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
 
 def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Checkout SCM"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Checkout SCM"
   ) {
     try {
       timeout(time: Timeouts.CHECKOUT_SCM_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -980,8 +980,8 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
 
 def codePolicyCheckSteps(niceCmd) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Code Policy Checks"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Code Policy Checks"
   ) {
     try {
       timeout(time: Timeouts.CODE_POLICY_CHECK_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -1029,8 +1029,8 @@ exit 0
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Build (JDK ${jdk})"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Build (JDK ${jdk})"
   ) {
     try {
       timeout(time: Timeouts.BUILD_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -1083,8 +1083,8 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
 
 def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, testJdk) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}${jdk == testJdk ? 'Self Test' : 'Deploy Test'} (JDK ${testJdk})"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}${jdk == testJdk ? 'Self Test' : 'Deploy Test'} (JDK ${testJdk})"
   ) {
     try {
       timeout(time: Timeouts.TEST_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -1116,8 +1116,8 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
 
 def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Deploy (JDK ${deployJdk})"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Deploy (JDK ${deployJdk})"
   ) {
     try {
       timeout(time: Timeouts.DEPLOY_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -1167,8 +1167,8 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
 
 def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}SonarQube analysis (JDK ${deployJdk})"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}SonarQube analysis (JDK ${deployJdk})"
   ) {
     try {
       timeout(time: Timeouts.SONARQUBE_ANALYSIS_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
@@ -1240,8 +1240,8 @@ def qualityGateSteps() {
 
 def analysisSteps() {
   lock(
-    label: "${STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    reason: "${STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Analysis"
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Analysis"
   ) {
     try {
       timeout(time: Timeouts.ANALYSIS_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
