@@ -926,6 +926,7 @@ private def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disa
 def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Workaround Git #27287"
   ) {
     try {
@@ -952,6 +953,7 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
 def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disableSubmodules) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Checkout SCM"
   ) {
     try {
@@ -981,6 +983,7 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
 def codePolicyCheckSteps(niceCmd) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Code Policy Checks"
   ) {
     try {
@@ -1030,6 +1033,7 @@ exit 0
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Build (JDK ${jdk})"
   ) {
     try {
@@ -1084,6 +1088,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
 def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, testJdk) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}${jdk == testJdk ? 'Self Test' : 'Deploy Test'} (JDK ${testJdk})"
   ) {
     try {
@@ -1117,6 +1122,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
 def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Deploy (JDK ${deployJdk})"
   ) {
     try {
@@ -1168,6 +1174,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
 def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}SonarQube analysis (JDK ${deployJdk})"
   ) {
     try {
@@ -1241,6 +1248,7 @@ def qualityGateSteps() {
 def analysisSteps() {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
     reason: "${Constants.STAGE_CONCURRENCY_LIMITER_REASON_PREFIX}Analysis"
   ) {
     try {
