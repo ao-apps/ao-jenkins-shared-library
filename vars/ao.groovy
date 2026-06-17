@@ -386,7 +386,7 @@ def setVariables(binding, currentBuild, scm, params) {
   }
 
   if (!binding.hasVariable('quietPeriod')) {
-    binding.setVariable('quietPeriod', 10 + buildPriority * 2)
+    binding.setVariable('quietPeriod', 5)
   }
 
   if (!binding.hasVariable('nice')) {
