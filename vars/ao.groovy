@@ -1046,7 +1046,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
             if (!fileExists(warmCacheMarker)) {
               lock(
                 resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
-                reason: "Serialize access to Maven Central to avoid \"429 Too Many Requests\""
+                reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
               ) {
                 sh buildCommand
                 sh "${niceCmd}touch $warmCacheMarker"
