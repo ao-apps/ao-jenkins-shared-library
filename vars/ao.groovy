@@ -1025,7 +1025,7 @@ exit 0
   }
 }
 
-private def doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+private def doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
@@ -1033,7 +1033,6 @@ private def doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, b
   ) {
     try {
       timeout(time: Timeouts.BUILD_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
-        def mavenLocalRepo = ".m2/repository-jdk-$jdk"
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
@@ -1075,11 +1074,11 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
         resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
         reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
       ) {
-        doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
+        doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
         sh "${niceCmd}touch $warmCacheMarker"
       }
     } else {
-      doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
+      doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
     }
   }
 }
