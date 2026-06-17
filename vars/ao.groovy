@@ -1025,7 +1025,7 @@ exit 0
   }
 }
 
-private def doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+private def doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
@@ -1033,24 +1033,22 @@ private def doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCo
   ) {
     try {
       timeout(time: Timeouts.BUILD_STEPS_TIMEOUT, unit: Timeouts.TIMEOUT_UNIT) {
-        dir(projectDir) {
-          def mavenLocalRepo = ".m2/repository-jdk-$jdk"
-          withMaven(
-            maven: maven,
-            mavenOpts: mavenOpts,
-            mavenLocalRepo: mavenLocalRepo,
-            jdk: "jdk-$jdk"
-          ) {
-            sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
-          }
+        def mavenLocalRepo = ".m2/repository-jdk-$jdk"
+        withMaven(
+          maven: maven,
+          mavenOpts: mavenOpts,
+          mavenLocalRepo: mavenLocalRepo,
+          jdk: "jdk-$jdk"
+        ) {
+          sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
         }
         script {
           // Create a separate copy for "Deploy Tests" stage
           if (jdk == deployJdk && testWhenExpression.call()) {
             testJdks.each() {testJdk ->
               if (testJdk != deployJdk) {
-                sh "${niceCmd}rm $projectDir/target-jdk-$deployJdk-$testJdk -rf"
-                sh "${niceCmd}cp -al $projectDir/target $projectDir/target-jdk-$deployJdk-$testJdk"
+                sh "${niceCmd}rm target-jdk-$deployJdk-$testJdk -rf"
+                sh "${niceCmd}cp -al target target-jdk-$deployJdk-$testJdk"
               }
             }
           }
@@ -1069,24 +1067,20 @@ private def doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCo
 }
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
-  def mavenLocalRepo = ".m2/repository-jdk-$jdk"
-  def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
-  def warmCacheMarkerExists
   dir(projectDir) {
-    warmCacheMarkerExists = fileExists(warmCacheMarker)
-  }
-  if (!warmCacheMarkerExists) {
-    lock(
-      resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
-      reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
-    ) {
-      doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
-      dir(projectDir) {
+    def mavenLocalRepo = ".m2/repository-jdk-$jdk"
+    def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
+    if (!fileExists(warmCacheMarker)) {
+      lock(
+        resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
+        reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
+      ) {
+        doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
         sh "${niceCmd}touch $warmCacheMarker"
       }
+    } else {
+      doBuildSteps(niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
     }
-  } else {
-    doBuildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
   }
 }
 
