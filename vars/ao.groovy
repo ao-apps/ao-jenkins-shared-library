@@ -35,6 +35,10 @@ Defaults to project's depth in the upstream project graph."""
 Defaults to true and will typically only be false to push a new version of a project out immediately.
 May also want to set BuildPriority to \"1\" to put at the top of the build queue."""
 
+  static final String ossindexEnabled_description = """Performs OSS Index dependency audit during the build.
+When enabled, the build will fail if any vulnerable dependencies are detected.
+Defaults to true and will typically only be false to push a new version of a project out immediately after administrative review."""
+
   static final String requireLastBuild_description = """Is the last build required for the zip-timestamp-merge Ant task?
 Defaults to true and will typically only be false for either the first build
 or any build that adds or removes build artifacts."""
@@ -208,6 +212,7 @@ def setVariables(binding, currentBuild, scm, params) {
 
   binding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
   binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
+  binding.setVariable('ossindexEnabled_description', Parameters.ossindexEnabled_description)
   binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
   binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
 
@@ -567,9 +572,13 @@ fi
   }
 
   // Common settings
+  def ossindexEnabled = (params.ossindexEnabled == null || params.ossindexEnabled)
+  def ossindexSkip = !ossindexEnabled
+  //echo "params.ossindexEnabled: ${params.ossindexEnabled}, ossindexEnabled: ${ossindexEnabled}, ossindexSkip: ${ossindexSkip}"
   def mvnCommonArgs = [
     '-Dstyle.color=always',
     '-Dmaven.gitcommitid.nativegit=true',
+    "-Dossindex.skip=${ossindexSkip}",
     "-DrequireLastBuild=${params.requireLastBuild ?: false}",
     "-Djenkins.buildNumber=${currentBuild.number}",
     '-N',
