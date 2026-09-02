@@ -1214,7 +1214,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             def msg = "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
             if (envAnalyzeNowReason != null) {
               params << new StringParameterValue(Constants.SONAR_ANALYZE_NOW_REASON, envAnalyzeNowReason)
-              msg += " for \"${envAnalyzeNowReason}\""
+              msg += " with analyze now reason \"${envAnalyzeNowReason}\""
             }
             run.addAction(new ParametersAction(params))
             run.save()
