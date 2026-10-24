@@ -389,12 +389,18 @@ def setVariables(binding, currentBuild, scm, params) {
     throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
   }
 
+  // BuildPriority can be overridden by admin via parameter, use default when is first build without parameter
+  def buildPriorityFromParam = (params.BuildPriority == null) ? buildPriority : (params.BuildPriority as Integer)
+
+  // Lock priority is opposite, where higher values are done first
+  if (!binding.hasVariable('lockPriority')) {
+    binding.setVariable('lockPriority', -buildPriorityFromParam)
+  }
+  this.lockPriority = binding.getVariable('lockPriority')
+
   if (!binding.hasVariable('quietPeriod')) {
     binding.setVariable('quietPeriod', 5)
   }
-
-  // BuildPriority can be overridden by admin via parameter, use default when is first build without parameter
-  def buildPriorityFromParam = (params.BuildPriority == null) ? buildPriority : (params.BuildPriority as Integer)
 
   if (!binding.hasVariable('nice')) {
     def defaultNice = buildPriorityFromParam - 1
@@ -933,6 +939,7 @@ def workaroundGit27287Steps(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, 
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Workaround Git #27287"
   ) {
     try {
@@ -960,6 +967,7 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Checkout SCM"
   ) {
     try {
@@ -990,6 +998,7 @@ def codePolicyCheckSteps(niceCmd) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Code Policy Checks"
   ) {
     try {
@@ -1040,6 +1049,7 @@ private def doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, m
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Build (JDK ${jdk})"
   ) {
     try {
@@ -1083,6 +1093,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
     if (!fileExists(warmCacheMarker)) {
       lock(
         resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
+        priority: this.lockPriority,
         reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
       ) {
         doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
@@ -1098,6 +1109,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "${jdk == testJdk ? 'Self Test' : 'Deploy Test'} (JDK ${testJdk})"
   ) {
     try {
@@ -1132,6 +1144,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Deploy (JDK ${deployJdk})"
   ) {
     try {
@@ -1184,6 +1197,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "SonarQube analysis (JDK ${deployJdk})"
   ) {
     try {
@@ -1258,6 +1272,7 @@ def analysisSteps() {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
+    priority: this.lockPriority,
     reason: "Analysis"
   ) {
     try {

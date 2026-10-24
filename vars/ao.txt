@@ -105,6 +105,12 @@ buildPriority
     The build job priority from 1 to 30 (lower is build first).
     Defaults to the depth in the upstreamProjects dependency graph.
 
+lockPriority
+
+    The lock priority (higher is processed first).
+    Default is the negation of params.BuildPriority:
+        -params.BuildPriority
+
 quietPeriod
 
     The time to delay between queuing job and starting build.
