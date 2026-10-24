@@ -108,8 +108,7 @@ buildPriority
 quietPeriod
 
     The time to delay between queuing job and starting build.
-    Default depends on buildPriority:
-        10 + buildPriority * 2
+    Defaults to 5 seconds
 
 nice
 
