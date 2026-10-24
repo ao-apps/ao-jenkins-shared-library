@@ -393,8 +393,11 @@ def setVariables(binding, currentBuild, scm, params) {
     binding.setVariable('quietPeriod', 5)
   }
 
+  // BuildPriority can be overridden by admin via parameter, use default when is first build without parameter
+  def buildPriorityFromParam = (params.BuildPriority == null) ? buildPriority : (params.BuildPriority as Integer)
+
   if (!binding.hasVariable('nice')) {
-    def defaultNice = (params.BuildPriority == null) ? 0 : ((params.BuildPriority as Integer) - 1)
+    def defaultNice = buildPriorityFromParam - 1
     if (defaultNice < 0) defaultNice = 0
     else if (defaultNice > 19) defaultNice = 19
     binding.setVariable('nice', defaultNice)
