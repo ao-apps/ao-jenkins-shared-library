@@ -1051,7 +1051,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
               throw new Exception("Stripping \"-U\" from mvnCommon failed: mvnCommon: $mvnCommon")
             }
             // No "${niceCmd}" because Go Offline is on the critical path for all builds.
-            sh "$MVN_CMD $mvnCommonWithoutUpdateSnapshots ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline"
+            sh "$MVN_CMD $mvnCommonWithoutUpdateSnapshots ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
           }
         }
       })
