@@ -593,7 +593,6 @@ fi
     "-DrequireLastBuild=${params.requireLastBuild ?: false}",
     "-Djenkins.buildNumber=${currentBuild.number}",
     '-N',
-    '-U',
     '-Daether.connector.basic.threads=1', // TODO: Remove this if we install Nexus Repository for artifact caching
     // Newer: '-Daether.connector.basic.downstreamThreads=1',
     "-Pjenkins,POST-SNAPSHOT${extraProfiles.isEmpty() ? '' : (',' + extraProfiles.join(','))}"
@@ -1047,13 +1046,8 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
             mavenLocalRepo: ".m2/repository-jdk-$jdk",
             jdk: "jdk-$jdk"
           ) {
-            // -U removed, since the check for latest snapshots will be during the build.
-            def mvnCommonWithoutUpdateSnapshots = mvnCommon.replace(' -U ', ' ')
-            if (mvnCommonWithoutUpdateSnapshots == mvnCommon) {
-              throw new Exception("Stripping \"-U\" from mvnCommon failed: mvnCommon: $mvnCommon")
-            }
             // No "${niceCmd}" because Go Offline is on the critical path for all builds.
-            sh "$MVN_CMD $mvnCommonWithoutUpdateSnapshots ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
+            sh "$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
           }
         }
       })
@@ -1073,7 +1067,8 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           mavenLocalRepo: ".m2/repository-jdk-$jdk",
           jdk: "jdk-$jdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          // TODO: Make --offline be selected per project, with those that access WSDL or similar disabling
+          sh "${niceCmd}$MVN_CMD $mvnCommon --offline ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
         }
         script {
           // Create a separate copy for "Deploy Tests" stage
@@ -1109,7 +1104,8 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
           mavenLocalRepo: ".m2/repository-jdk-$testJdk",
           jdk: "jdk-$testJdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon -Dalt.build.dir=$buildDir $coverage $testGoals"
+          // TODO: Make --offline be selected per project, with those that access WSDL or similar disabling
+          sh "${niceCmd}$MVN_CMD $mvnCommon --offline -Dalt.build.dir=$buildDir $coverage $testGoals"
         }
       }
     })
