@@ -1105,7 +1105,14 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
           mavenLocalRepo: ".m2/repository-jdk-$testJdk",
           jdk: "jdk-$testJdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon --offline -Dalt.build.dir=$buildDir $coverage $testGoals"
+          // --offline didn't work for tests:
+          // Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.0:test (default-cli) on project ao-ant-tasks:
+          // The following artifacts could not be resolved: org.apache.maven.surefire:surefire-junit-platform:jar:3.6.0 (absent): Cannot access … in offline mode and the artifact … has not been downloaded from it before.
+          // TODO: After Nexus Repository is enabled, benchmark with and without --offline
+          //
+          // Note, no "-U" here since the go-offline and build phases are already downloaded all the latest snapshots,
+          // and we do not get any snapshots from external sources so the straggling downloads during tests will be limited.
+          sh "${niceCmd}$MVN_CMD $mvnCommon -Dalt.build.dir=$buildDir $coverage $testGoals"
         }
       }
     })
