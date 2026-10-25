@@ -822,6 +822,22 @@ fi
 """
 }
 
+private def withTimeoutHandling(stepTimeout, Closure body) {
+  try {
+    timeout(time: stepTimeout, unit: Timeouts.TIMEOUT_UNIT) {
+      body.call()
+    }
+  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+    if (e.isActualInterruption()) {
+      echo 'Rethrowing actual interruption instead of converting timeout to failure'
+      throw e
+    }
+    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
+      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
+    }
+  }
+}
+
 def checkReadySteps() {
   // Not locking on STAGE_CONCURRENCY_LIMITER since this function is entirely controller-side (no calls to agent)
   withTimeoutHandling(Timeouts.CHECK_READY_STEPS_TIMEOUT, {
@@ -913,22 +929,6 @@ private def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disa
       ]
     ]
   ]
-}
-
-private def withTimeoutHandling(timeout, Closure body) {
-  try {
-    timeout(time: timeout, unit: Timeouts.TIMEOUT_UNIT) {
-      body.call()
-    }
-  } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-    if (e.isActualInterruption()) {
-      echo 'Rethrowing actual interruption instead of converting timeout to failure'
-      throw e
-    }
-    if (currentBuild.result == null || currentBuild.result == hudson.model.Result.ABORTED) {
-      error((e.message == null) ? 'Converting timeout to failure' : "Converting timeout to failure: ${e.message}")
-    }
-  }
 }
 
 /*
