@@ -1032,7 +1032,9 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
     lock(
       label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
       quantity: 1,
-      priority: this.lockPriority,
+      // Go Offline is on the critical path for builds, so get a stage slot as soon as possible.
+      // Use a higher lock priority than any value of this.lockPriority (which are -1 and below).
+      priority: 0,
       reason: "Build (JDK ${jdk}) - Go Offline"
     ) {
       withTimeoutHandling(Timeouts.GO_OFFLINE_STEPS_TIMEOUT, {
