@@ -1045,7 +1045,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
             mavenLocalRepo: ".m2/repository-jdk-$jdk",
             jdk: "jdk-$jdk"
           ) {
-            sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
+            sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline"
           }
         }
       })
