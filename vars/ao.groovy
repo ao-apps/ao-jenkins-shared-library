@@ -1045,8 +1045,13 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
             mavenLocalRepo: ".m2/repository-jdk-$jdk",
             jdk: "jdk-$jdk"
           ) {
+            // -U removed, since the check for latest snapshots will be during the build.
+            def mvnCommonWithoutUpdateSnapshots = mvnCommon.replace(' -U ', ' ')
+            if (mvnCommonWithoutUpdateSnapshots == mvnCommon) {
+              throw new Exception("Stripping \"-U\" from mvnCommon failed: mvnCommon: $mvnCommon")
+            }
             // No "${niceCmd}" because Go Offline is on the critical path for all builds.
-            sh "$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline"
+            sh "$MVN_CMD $mvnCommonWithoutUpdateSnapshots ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline"
           }
         }
       })
