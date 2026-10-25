@@ -1067,7 +1067,6 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           mavenLocalRepo: ".m2/repository-jdk-$jdk",
           jdk: "jdk-$jdk"
         ) {
-          // TODO: Make --offline be selected per project, with those that access WSDL or similar disabling
           sh "${niceCmd}$MVN_CMD $mvnCommon --offline ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
         }
         script {
@@ -1104,7 +1103,6 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
           mavenLocalRepo: ".m2/repository-jdk-$testJdk",
           jdk: "jdk-$testJdk"
         ) {
-          // TODO: Make --offline be selected per project, with those that access WSDL or similar disabling
           sh "${niceCmd}$MVN_CMD $mvnCommon --offline -Dalt.build.dir=$buildDir $coverage $testGoals"
         }
       }
