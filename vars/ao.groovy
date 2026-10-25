@@ -77,6 +77,7 @@ class Timeouts {
   static final int CODE_POLICY_CHECK_STEPS_TIMEOUT    = 15
   static final int WORKAROUND_GIT_27287_STEPS_TIMEOUT = 15
   static final int CHECKOUT_SCM_STEPS_TIMEOUT         = 15
+  static final int GO_OFFLINE_STEPS_TIMEOUT           = 30
   static final int BUILD_STEPS_TIMEOUT                = 60
   static final int TEST_STEPS_TIMEOUT                 = 60
   static final int DEPLOY_STEPS_TIMEOUT               = 60
@@ -91,6 +92,7 @@ class Timeouts {
     CODE_POLICY_CHECK_STEPS_TIMEOUT +
     WORKAROUND_GIT_27287_STEPS_TIMEOUT +
     CHECKOUT_SCM_STEPS_TIMEOUT +
+    GO_OFFLINE_STEPS_TIMEOUT +
     BUILD_STEPS_TIMEOUT +
     TEST_STEPS_TIMEOUT +
     DEPLOY_STEPS_TIMEOUT +
@@ -1021,7 +1023,32 @@ exit 0
   }
 }
 
-private def doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
+  lock(
+    resource: "go-offline-serialize-central-repository-${env.NODE_NAME}",
+    priority: this.lockPriority,
+    reason: "Build (JDK ${jdk}) - Go Offline - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
+  ) {
+    lock(
+      label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+      quantity: 1,
+      priority: this.lockPriority,
+      reason: "Build (JDK ${jdk}) - Go Offline"
+    ) {
+      withTimeoutHandling(Timeouts.GO_OFFLINE_STEPS_TIMEOUT, {
+        dir(projectDir) {
+          withMaven(
+            maven: maven,
+            mavenOpts: mavenOpts,
+            mavenLocalRepo: ".m2/repository-jdk-$jdk",
+            jdk: "jdk-$jdk"
+          ) {
+            sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
+          }
+        }
+      })
+    }
+  }
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
@@ -1029,45 +1056,28 @@ private def doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, m
     reason: "Build (JDK ${jdk})"
   ) {
     withTimeoutHandling(Timeouts.BUILD_STEPS_TIMEOUT, {
-      withMaven(
-        maven: maven,
-        mavenOpts: mavenOpts,
-        mavenLocalRepo: mavenLocalRepo,
-        jdk: "jdk-$jdk"
-      ) {
-        sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
-      }
-      script {
-        // Create a separate copy for "Deploy Tests" stage
-        if (jdk == deployJdk && testWhenExpression.call()) {
-          testJdks.each() {testJdk ->
-            if (testJdk != deployJdk) {
-              sh "${niceCmd}rm target-jdk-$deployJdk-$testJdk -rf"
-              sh "${niceCmd}cp -al target target-jdk-$deployJdk-$testJdk"
+      dir(projectDir) {
+        withMaven(
+          maven: maven,
+          mavenOpts: mavenOpts,
+          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          jdk: "jdk-$jdk"
+        ) {
+          sh "${niceCmd}$MVN_CMD $mvnCommon ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+        }
+        script {
+          // Create a separate copy for "Deploy Tests" stage
+          if (jdk == deployJdk && testWhenExpression.call()) {
+            testJdks.each() {testJdk ->
+              if (testJdk != deployJdk) {
+                sh "${niceCmd}rm target-jdk-$deployJdk-$testJdk -rf"
+                sh "${niceCmd}cp -al target target-jdk-$deployJdk-$testJdk"
+              }
             }
           }
         }
       }
     })
-  }
-}
-
-def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
-  dir(projectDir) {
-    def mavenLocalRepo = ".m2/repository-jdk-$jdk"
-    def warmCacheMarker = "$mavenLocalRepo/ao-warm-cache"
-    if (!fileExists(warmCacheMarker)) {
-      lock(
-        resource: "cold-cache-serialize-central-repository-${env.NODE_NAME}",
-        priority: this.lockPriority,
-        reason: "Build (JDK ${jdk}) - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
-      ) {
-        doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
-        sh "${niceCmd}touch $warmCacheMarker"
-      }
-    } else {
-      doBuildSteps(mavenLocalRepo, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks)
-    }
   }
 }
 
