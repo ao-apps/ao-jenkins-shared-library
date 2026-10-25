@@ -1026,7 +1026,9 @@ exit 0
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
-    resource: "go-offline-serialize-central-repository-${env.NODE_NAME}",
+    // Trying a global lock.  Still got 429 on agent7 with only agent1 and agent7 active:
+    // resource: "go-offline-serialize-central-repository-${env.NODE_NAME}",
+    resource: "go-offline-serialize-central-repository",
     priority: this.lockPriority,
     reason: "Build (JDK ${jdk}) - Go Offline - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
   ) {
