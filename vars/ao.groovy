@@ -594,6 +594,8 @@ fi
     "-Djenkins.buildNumber=${currentBuild.number}",
     '-N',
     '-U',
+    '-Daether.connector.basic.threads=1', // TODO: Remove this if we install Nexus Repository for artifact caching
+    // Newer: '-Daether.connector.basic.downstreamThreads=1',
     "-Pjenkins,POST-SNAPSHOT${extraProfiles.isEmpty() ? '' : (',' + extraProfiles.join(','))}"
   ]
   if (params.mavenDebug) {
