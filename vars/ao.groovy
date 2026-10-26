@@ -593,8 +593,6 @@ fi
     "-DrequireLastBuild=${params.requireLastBuild ?: false}",
     "-Djenkins.buildNumber=${currentBuild.number}",
     '-N',
-    '-Daether.connector.basic.threads=1', // TODO: Remove this if we install Nexus Repository for artifact caching
-    // Newer: '-Daether.connector.basic.downstreamThreads=1',
     "-Pjenkins,POST-SNAPSHOT${extraProfiles.isEmpty() ? '' : (',' + extraProfiles.join(','))}"
   ]
   if (params.mavenDebug) {
@@ -1026,36 +1024,6 @@ exit 0
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
-    // Trying a global lock.  Still got 429 on agent7 with only agent1 and agent7 active:
-    // resource: "go-offline-serialize-central-repository-${env.NODE_NAME}",
-    resource: "go-offline-serialize-central-repository",
-    priority: this.lockPriority,
-    reason: "Build (JDK ${jdk}) - Go Offline - Serialize access to Maven Central to avoid \"429 Too Many Requests\""
-  ) {
-    lock(
-      label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-      quantity: 1,
-      // Go Offline is on the critical path for all builds, so get a stage slot as soon as possible.
-      // Use a higher lock priority than any value of this.lockPriority (which are -1 and below).
-      priority: 0,
-      reason: "Build (JDK ${jdk}) - Go Offline"
-    ) {
-      withTimeoutHandling(Timeouts.GO_OFFLINE_STEPS_TIMEOUT, {
-        dir(projectDir) {
-          withMaven(
-            maven: maven,
-            mavenOpts: mavenOpts,
-            mavenLocalRepo: ".m2/repository-jdk-$jdk",
-            jdk: "jdk-$jdk"
-          ) {
-            // No "${niceCmd}" because Go Offline is on the critical path for all builds.
-            sh "$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}dependency:go-offline pgpverify:go-offline"
-          }
-        }
-      })
-    }
-  }
-  lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
     priority: this.lockPriority,
@@ -1069,7 +1037,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           mavenLocalRepo: ".m2/repository-jdk-$jdk",
           jdk: "jdk-$jdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon --offline ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          sh "${niceCmd}$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
         }
         script {
           // Create a separate copy for "Deploy Tests" stage
