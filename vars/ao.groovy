@@ -22,6 +22,7 @@
  * along with ao-jenkins-shared-library.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import groovy.transform.Field
 import hudson.model.ParametersAction
 import hudson.model.BooleanParameterValue
 import hudson.model.StringParameterValue
@@ -173,7 +174,8 @@ class Utils {
 }
 
 // Set in setVariables and used in later functions
-def lockPriority
+@Field
+Integer lockPriority
 
 def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('buildDiscarder')) {
