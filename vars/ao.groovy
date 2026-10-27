@@ -172,6 +172,9 @@ class Utils {
   }
 }
 
+// Set in setVariables and used in later functions
+def lockPriority
+
 def setVariables(binding, currentBuild, scm, params) {
   if (!binding.hasVariable('buildDiscarder')) {
     // See https://plugins.jenkins.io/build-history-manager/
