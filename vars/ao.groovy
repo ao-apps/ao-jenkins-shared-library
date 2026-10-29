@@ -1137,49 +1137,57 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
 
 def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
-    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
-    quantity: 1,
+    resource: "sonarqube-analysis",
     priority: this.lockPriority,
     reason: "SonarQube analysis (JDK ${deployJdk})"
   ) {
-    withTimeoutHandling(Timeouts.SONARQUBE_ANALYSIS_STEPS_TIMEOUT, {
-      // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
-      dir(projectDir) {
-        withSonarQubeEnv(installationName: 'AO SonarQube') {
-          long analysisTime = System.currentTimeMillis()
-          withMaven(
-            maven: maven,
-            mavenOpts: mavenOpts,
-            mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
-            jdk: "jdk-$deployJdk"
-          ) {
-            sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
+    lock(
+      label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+      quantity: 1,
+      // SonarQube is a resource shared by all builds, so get a stage slot as soon as possible.
+      // Uses a higher lock priority than any value of this.lockPriority (which are -1 and below).
+      priority: 0,
+      reason: "SonarQube analysis (JDK ${deployJdk})"
+    ) {
+      withTimeoutHandling(Timeouts.SONARQUBE_ANALYSIS_STEPS_TIMEOUT, {
+        // Not doing shallow: sh "${niceCmd}git fetch --unshallow || true" // SonarQube does not currently support shallow fetch
+        dir(projectDir) {
+          withSonarQubeEnv(installationName: 'AO SonarQube') {
+            long analysisTime = System.currentTimeMillis()
+            withMaven(
+              maven: maven,
+              mavenOpts: mavenOpts,
+              mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
+              jdk: "jdk-$deployJdk"
+            ) {
+              sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
+            }
+            def run = currentBuild.rawBuild
+            // Only keep the most recent action
+            run.getActions(ParametersAction)
+              .findAll { it?.getParameter(Constants.SONAR_GIT_COMMIT) || it?.getParameter(Constants.SONAR_ANALYSIS_TIME) }
+              .each { run.removeAction(it) }
+            def gitCommit = sh(
+              script: "${niceCmd}git rev-parse HEAD",
+              returnStdout: true
+            ).trim()
+            def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
+            def params = [
+              new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
+              new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
+            ]
+            def msg = "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
+            if (envAnalyzeNowReason != null) {
+              params << new StringParameterValue(Constants.SONAR_ANALYZE_NOW_REASON, envAnalyzeNowReason)
+              msg += " with analyze now reason \"${envAnalyzeNowReason}\""
+            }
+            run.addAction(new ParametersAction(params))
+            run.save()
+            echo msg
           }
-          def run = currentBuild.rawBuild
-          // Only keep the most recent action
-          run.getActions(ParametersAction)
-             .findAll { it?.getParameter(Constants.SONAR_GIT_COMMIT) || it?.getParameter(Constants.SONAR_ANALYSIS_TIME) }
-             .each { run.removeAction(it) }
-          def gitCommit = sh(
-            script: "${niceCmd}git rev-parse HEAD",
-            returnStdout: true
-          ).trim()
-          def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
-          def params = [
-            new StringParameterValue(Constants.SONAR_GIT_COMMIT, gitCommit),
-            new StringParameterValue(Constants.SONAR_ANALYSIS_TIME, "${analysisTime}")
-          ]
-          def msg = "sonarQubeAnalysisSteps: saved: ${gitCommit} at ${analysisTime}"
-          if (envAnalyzeNowReason != null) {
-            params << new StringParameterValue(Constants.SONAR_ANALYZE_NOW_REASON, envAnalyzeNowReason)
-            msg += " with analyze now reason \"${envAnalyzeNowReason}\""
-          }
-          run.addAction(new ParametersAction(params))
-          run.save()
-          echo msg
         }
-      }
-    })
+      })
+    }
   }
 }
 
