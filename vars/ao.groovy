@@ -1137,7 +1137,8 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
 
 def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
   lock(
-    resource: "sonarqube-analysis",
+    label: "sonarqube-analysis",
+    quantity: 1,
     priority: this.lockPriority,
     reason: "SonarQube analysis (JDK ${deployJdk})"
   ) {
