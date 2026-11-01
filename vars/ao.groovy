@@ -26,6 +26,7 @@ import groovy.transform.Field
 import hudson.model.ParametersAction
 import hudson.model.BooleanParameterValue
 import hudson.model.StringParameterValue
+import java.util.concurrent.ConcurrentHashMap
 
 class Parameters {
   static final String BuildPriority_description = """Specify the priority of this build.
@@ -1027,6 +1028,11 @@ exit 0
   }
 }
 
+// Tracks which repositories directories have been used during the build.
+// Any .m2/repository-jdk-* directory that was not used is deleted after successful deploy.
+@Field
+Set<String> jdkRepositoriesUsed = ConcurrentHashMap.newKeySet()
+
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
@@ -1036,10 +1042,12 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   ) {
     withTimeoutHandling(Timeouts.BUILD_STEPS_TIMEOUT, {
       dir(projectDir) {
+        def jdkRepository = "repository-jdk-$jdk"
+        jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
-          mavenLocalRepo: ".m2/repository-jdk-$jdk",
+          mavenLocalRepo: ".m2/$jdkRepository",
           jdk: "jdk-$jdk"
         ) {
           sh "${niceCmd}$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
@@ -1072,10 +1080,12 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
       def coverage  = "${(jdk == deployJdk && testJdk == deployJdk && fileExists(projectDir + '/src/main/java') && fileExists(projectDir + '/src/test')) ? '-Pcoverage' : '-P!coverage'}"
       def testGoals = "${(coverage == '-Pcoverage') ? 'jacoco:prepare-agent surefire:test jacoco:report' : 'surefire:test'}"
       dir(projectDir) {
+        def jdkRepository = "repository-jdk-$testJdk"
+        jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
-          mavenLocalRepo: ".m2/repository-jdk-$testJdk",
+          mavenLocalRepo: ".m2/$jdkRepository",
           jdk: "jdk-$testJdk"
         ) {
           // --offline didn't work for tests:
@@ -1090,6 +1100,22 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
       }
     })
   }
+}
+
+/**
+ * Clean any per-JDK repositories not used by this build.
+ */
+private def cleanupUnusedJdkRepositories() {
+  findFiles(glob: '.m2/repository-jdk-*')
+    .findAll { file ->
+      file.directory && !jdkRepositoriesUsed.contains(file.name)
+    }
+    .each { file ->
+      echo "Removing unused Maven repository: ${file.name}"
+      dir(".m2/${file.name}") {
+        deleteDir()
+      }
+    }
 }
 
 def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
@@ -1118,16 +1144,20 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
         )
         // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
         sh moveSurefireReportsScript()
+        def jdkRepository = "repository-jdk-$deployJdk"
+        jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
           mavenOpts: mavenOpts,
-          mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
+          mavenLocalRepo: ".m2/$jdkRepository",
           jdk: "jdk-$deployJdk"
         ) {
           sh "${niceCmd}$MVN_CMD $mvnCommon -U -Pnexus,jenkins-deploy,publish deploy"
         }
         // Restore surefire-reports
         sh restoreSurefireReportsScript()
+        // Clean any per-JDK repositories not used by this build.
+        cleanupUnusedJdkRepositories()
       }
       // Make sure working tree not modified by deploy
       sh checkTreeUnmodifiedScriptDeploy(niceCmd)
@@ -1155,10 +1185,14 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
         dir(projectDir) {
           withSonarQubeEnv(installationName: 'AO SonarQube') {
             long analysisTime = System.currentTimeMillis()
+            def jdkRepository = "repository-jdk-$deployJdk"
+            if (!jdkRepositoriesUsed.contains(jdkRepository)) {
+              throw new AssertionError("jdkRepository should have already been added to jdkRepositoriesUsed during Deploy: $jdkRepository")
+            }
             withMaven(
               maven: maven,
               mavenOpts: mavenOpts,
-              mavenLocalRepo: ".m2/repository-jdk-$deployJdk",
+              mavenLocalRepo: ".m2/$jdkRepository",
               jdk: "jdk-$deployJdk"
             ) {
               sh "${niceCmd}$MVN_CMD $mvnCommon -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml sonar:sonar"
