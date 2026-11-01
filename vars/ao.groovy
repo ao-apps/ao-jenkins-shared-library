@@ -1117,14 +1117,15 @@ private def cleanupUnusedJdkRepositories() {
   ).trim()
   def repositories = repositoriesOutput ? repositoriesOutput.split('\n') : []
   echo "Found ${repositories.size()} matching Maven repository directories"
-  repositories.findAll { repository ->
+  def unusedRepositories = repositories.findAll { repository ->
     !jdkRepositoriesUsed.contains(repository)
   }
-  .each { repository ->
+  echo "Unused Maven repositories: ${unusedRepositories}"
+  unusedRepositories.each { repository ->
     echo "Removing unused Maven repository: ${repository}"
-    dir(".m2/$repository") {
-      deleteDir()
-    }
+    // TODO dir(".m2/$repository") {
+    // TODO   deleteDir()
+    // TODO }
   }
 }
 
