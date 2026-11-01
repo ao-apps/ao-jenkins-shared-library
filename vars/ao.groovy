@@ -1107,7 +1107,12 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
  */
 private def cleanupUnusedJdkRepositories() {
   echo "JDK repositories used during this build: ${jdkRepositoriesUsed.sort()}"
-  def repositories = findFiles(glob: '.m2/repository-jdk-*')
+  echo "PWD: ${pwd()}"
+  echo "WORKSPACE: ${env.WORKSPACE}"
+  echo ".m2 exists: ${fileExists('.m2')}"
+  echo ".m2/repository-jdk-17 exists: ${fileExists('.m2/repository-jdk-17')}"
+  echo "Glob test: ${findFiles(glob: '**/repository-jdk-*').collect { it.path }}"
+  def repositories = findFiles(glob: '.m2/repository-jdk-*', defaultExcludes: false)
   echo "Found ${repositories.size()} matching Maven repository entries"
   repositories.each { file ->
     echo "Found: ${file.path}, directory=${file.directory}, tracked=${jdkRepositoriesUsed.contains(file.name)}"
