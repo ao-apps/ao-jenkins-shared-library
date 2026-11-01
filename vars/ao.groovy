@@ -1106,6 +1106,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
  * Clean any per-JDK repositories not used by this build.
  */
 private def cleanupUnusedJdkRepositories() {
+  echo "JDK repositories used: ${jdkRepositoriesUsed}"
   def repositoriesOutput = sh(
     script: '''
       cd .m2 &&
