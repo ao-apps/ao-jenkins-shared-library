@@ -1106,18 +1106,24 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
  * Clean any per-JDK repositories not used by this build.
  */
 private def cleanupUnusedJdkRepositories() {
-  dir('.m2') {
-    echo "Glob test: ${findFiles(glob: 'repository-jdk-*').collect { it.path }}"
-    def repositories = findFiles(glob: 'repository-jdk-*')
-    echo "Found ${repositories.size()} matching Maven repository entries"
-    repositories.findAll { file ->
-      file.directory && !jdkRepositoriesUsed.contains(file.name)
-    }
-    .each { file ->
-      echo "Removing unused Maven repository: ${file.name}"
-      dir(file.name) {
-        deleteDir()
-      }
+  def repositoriesOutput = sh(
+    script: '''
+      cd .m2 &&
+      for repository in repository-jdk-*; do
+        [ -d "$repository" ] && printf '%s\\n' "$repository"
+      done
+    ''',
+    returnStdout: true
+  ).trim()
+  def repositories = repositoriesOutput ? repositoriesOutput.split('\n') : []
+  echo "Found ${repositories.size()} matching Maven repository directories"
+  repositories.findAll { repository ->
+    !jdkRepositoriesUsed.contains(repository)
+  }
+  .each { repository ->
+    echo "Removing unused Maven repository: ${repository}"
+    dir(".m2/$repository") {
+      deleteDir()
     }
   }
 }
