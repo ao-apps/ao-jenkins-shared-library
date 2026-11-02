@@ -1118,6 +1118,13 @@ private def cleanupUnusedJdkRepositories() {
   ).trim()
   def repositories = repositoriesOutput ? repositoriesOutput.split('\n') : []
   echo "Found ${repositories.size()} matching Maven repository directories"
+  echo "Used set class: ${jdkRepositoriesUsed.getClass().name}"
+  jdkRepositoriesUsed.each { repository ->
+    echo "Used: '${repository}' (${repository.getClass().name})"
+  }
+  repositories.each { repository ->
+    echo "Discovered: '${repository}' (${repository.getClass().name}), contains=${jdkRepositoriesUsed.contains(repository)}"
+  }
   def unusedRepositories = repositories.findAll { repository ->
     !jdkRepositoriesUsed.contains(repository)
   }
