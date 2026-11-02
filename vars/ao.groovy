@@ -446,6 +446,10 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
   def extraProfiles = scriptBinding.getVariable('extraProfiles')
 
+  if (!scriptBinding.hasVariable('testWhenExpression')) {
+    scriptBinding.setVariable('testWhenExpression', this.&testWhenExpression)
+  }
+
   // Determine nice command prefix or empty string for none
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
   scriptBinding.setVariable('niceCmd', niceCmd)
