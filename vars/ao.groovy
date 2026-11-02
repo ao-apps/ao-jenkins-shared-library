@@ -175,10 +175,8 @@ class Utils {
 }
 
 // Set in setVariables and used in later functions
-@Field
-String projectDir
-@Field
-Integer lockPriority
+@Field private String projectDir
+@Field private Integer lockPriority
 
 def defaultTestWhenExpression() {
   return fileExists(projectDir + '/src/test')
@@ -192,7 +190,7 @@ def defaultSonarqubeEnabledExpression() {
     projectDir + '/.github/workflows/build.yml'
   )
 }
-@Field Closure sonarqubeEnabledExpression
+@Field private Closure sonarqubeEnabledExpression
 
 def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('buildDiscarder')) {
@@ -1037,8 +1035,7 @@ exit 0
 
 // Tracks which repositories directories have been used during the build.
 // Any .m2/repository-jdk-* directory that was not used is deleted after successful deploy.
-@Field
-Set<String> jdkRepositoriesUsed = ConcurrentHashMap.newKeySet()
+@Field private Set<String> jdkRepositoriesUsed = ConcurrentHashMap.newKeySet()
 
 def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk, buildPhases, testWhenExpression, testJdks) {
   lock(
