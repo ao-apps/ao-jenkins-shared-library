@@ -192,6 +192,112 @@ def defaultSonarqubeEnabledExpression() {
 }
 @Field private Closure sonarqubeEnabledExpression
 
+def defaultSonarqubeWhenExpression() {
+  Utils.memoize {
+    // Must be enabled
+    def sonarEnabled = sonarqubeEnabledExpression()
+    def run = currentBuild.rawBuild
+    run.addAction(new ParametersAction(
+        new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
+    ))
+    run.save()
+    echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
+    if (!sonarEnabled) {
+      echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
+      return false
+    }
+
+    // Support manual configuration via parameters
+    def sonarQubeAnalysisMode = params.sonarQubeAnalysis ?: 'Auto'
+    if (sonarQubeAnalysisMode == 'Force') {
+      echo "sonarqubeWhenExpression: analysis forced by parameter."
+      return true
+    }
+    if (sonarQubeAnalysisMode == 'Skip') {
+      echo "sonarqubeWhenExpression: analysis skipped by parameter."
+      return false
+    }
+
+    // Find the most recent build that ran SonarQube analysis
+    def lastAnalysisGitCommit = null
+    def lastAnalysisTime = null
+    def lastAnalysisAnalyzeNowReason = null
+    def previous = run.previousBuild
+    FIND_LAST_ANALYSIS:
+    while (previous != null) {
+      def actions = previous.getActions(ParametersAction)
+      for (action in actions) {
+        def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
+        def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
+        if (gitCommit != null && time != null) {
+          lastAnalysisGitCommit = gitCommit
+          lastAnalysisTime = time
+          lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
+          break FIND_LAST_ANALYSIS
+        }
+      }
+      previous = previous.previousBuild
+    }
+    if (lastAnalysisGitCommit == null) {
+      echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
+      return true
+    }
+    def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
+    if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
+      echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
+      return true
+    }
+    if (lastAnalysisTime != null) {
+      long currentTime = System.currentTimeMillis()
+      // Handle system clock changes
+      if (lastAnalysisTime > currentTime) {
+        echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
+        return true
+      }
+      if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
+        echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
+        return true
+      }
+    }
+    // git diff to decide
+    def numChanges = sh(
+      script: """#!/bin/bash
+set -e
+set -o pipefail
+set -f
+# Make sure previous commit still exists
+if ${niceCmd}git cat-file -e '${lastAnalysisGitCommit}^{commit}'
+then
+  # Paths are relative to the Git repository root
+  cd "\$(${niceCmd}git rev-parse --show-toplevel)"
+  # Convert sparse checkout to Git pathspecs
+  mapfile -t pathspecs < <(
+    git sparse-checkout list |
+    sed -e 's#^/##' \
+        -e 's#^!#:(exclude)#' \
+        -e 's#:(exclude)/#:(exclude)#' \
+        -e 's#/\$#/**#'
+  )
+  ${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
+else
+  echo -1
+fi
+""",
+      returnStdout: true
+    ).trim().toInteger()
+    if (numChanges == -1) {
+      echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
+      return true
+    } else if (numChanges > 0) {
+      echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
+      return true
+    } else {
+      echo "sonarqubeWhenExpression: no files changed since last analysis, skipping."
+      return false
+    }
+  }
+}
+
 def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('buildDiscarder')) {
     // See https://plugins.jenkins.io/build-history-manager/
@@ -482,111 +588,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
 
   if (!scriptBinding.hasVariable('sonarqubeWhenExpression')) {
-    // Compute once when first needed and store result
-    def sonarqubeWhenExpressionResult = null
-    scriptBinding.setVariable('sonarqubeWhenExpression', Utils.memoize {
-      // Must be enabled
-      def sonarEnabled = sonarqubeEnabledExpression()
-      def run = currentBuild.rawBuild
-      run.addAction(new ParametersAction(
-          new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
-      ))
-      run.save()
-      echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
-      if (!sonarEnabled) {
-        echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
-        return false
-      }
-
-      // Support manual configuration via parameters
-      def sonarQubeAnalysisMode = params.sonarQubeAnalysis ?: 'Auto'
-      if (sonarQubeAnalysisMode == 'Force') {
-        echo "sonarqubeWhenExpression: analysis forced by parameter."
-        return true
-      }
-      if (sonarQubeAnalysisMode == 'Skip') {
-        echo "sonarqubeWhenExpression: analysis skipped by parameter."
-        return false
-      }
-
-      // Find the most recent build that ran SonarQube analysis
-      def lastAnalysisGitCommit = null
-      def lastAnalysisTime = null
-      def lastAnalysisAnalyzeNowReason = null
-      def previous = run.previousBuild
-      FIND_LAST_ANALYSIS:
-      while (previous != null) {
-        def actions = previous.getActions(ParametersAction)
-        for (action in actions) {
-          def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
-          def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
-          if (gitCommit != null && time != null) {
-            lastAnalysisGitCommit = gitCommit
-            lastAnalysisTime = time
-            lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
-            break FIND_LAST_ANALYSIS
-          }
-        }
-        previous = previous.previousBuild
-      }
-      if (lastAnalysisGitCommit == null) {
-        echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
-        return true
-      }
-      def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
-      if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
-        echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
-        return true
-      }
-      if (lastAnalysisTime != null) {
-        long currentTime = System.currentTimeMillis()
-        // Handle system clock changes
-        if (lastAnalysisTime > currentTime) {
-          echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
-          return true
-        }
-        if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
-          echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
-          return true
-        }
-      }
-      // git diff to decide
-      def numChanges = sh(
-        script: """#!/bin/bash
-set -e
-set -o pipefail
-set -f
-# Make sure previous commit still exists
-if ${niceCmd}git cat-file -e '${lastAnalysisGitCommit}^{commit}'
-then
-  # Paths are relative to the Git repository root
-  cd "\$(${niceCmd}git rev-parse --show-toplevel)"
-  # Convert sparse checkout to Git pathspecs
-  mapfile -t pathspecs < <(
-    git sparse-checkout list |
-    sed -e 's#^/##' \
-        -e 's#^!#:(exclude)#' \
-        -e 's#:(exclude)/#:(exclude)#' \
-        -e 's#/\$#/**#'
-  )
-  ${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
-else
-  echo -1
-fi
-""",
-        returnStdout: true
-      ).trim().toInteger()
-      if (numChanges == -1) {
-        echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
-        return true
-      } else if (numChanges > 0) {
-        echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
-        return true
-      } else {
-        echo "sonarqubeWhenExpression: no files changed since last analysis, skipping."
-        return false
-      }
-    })
+    scriptBinding.setVariable('sonarqubeWhenExpression', this.&defaultSonarqubeWhenExpression)
   }
 
   if (!scriptBinding.hasVariable('failureEmailTo')) {
