@@ -174,6 +174,27 @@ def defaultSonarqubeEnabledExpression() {
   )
 }
 
+@NonCPS
+private static def findLastSonarqubeAnalysis(run) {
+  def previous = run.previousBuild
+  while (previous != null) {
+    def actions = previous.getActions(ParametersAction)
+    for (action in actions) {
+      def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
+      def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
+      if (gitCommit != null && time != null) {
+        return [
+          gitCommit: gitCommit,
+          time: time,
+          analyzeNowReason: action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
+        ]
+      }
+    }
+    previous = previous.previousBuild
+  }
+  return null
+}
+
 private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpression) {
   // Must be enabled
   def sonarEnabled = sonarqubeEnabledExpression()
@@ -182,6 +203,7 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
       new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
   ))
   run.save()
+  run = null // Do not try to serialize
   echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
   if (!sonarEnabled) {
     echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
@@ -200,45 +222,25 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
   }
 
   // Find the most recent build that ran SonarQube analysis
-  def lastAnalysisGitCommit = null
-  def lastAnalysisTime = null
-  def lastAnalysisAnalyzeNowReason = null
-  def previous = run.previousBuild
-  run = null // Do not try to serialize
-  FIND_LAST_ANALYSIS:
-  while (previous != null) {
-    def actions = previous.getActions(ParametersAction)
-    for (action in actions) {
-      def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
-      def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
-      if (gitCommit != null && time != null) {
-        lastAnalysisGitCommit = gitCommit
-        lastAnalysisTime = time
-        lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
-        break FIND_LAST_ANALYSIS
-      }
-    }
-    previous = previous.previousBuild
-  }
-  previous = null // Do not try to serialize
-  if (lastAnalysisGitCommit == null) {
+  def lastAnalysis = findLastSonarqubeAnalysis(currentBuild.rawBuild)
+  if (lastAnalysis == null) {
     echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
     return true
   }
   def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
-  if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
+  if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysis.analyzeNowReason) {
     echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
     return true
   }
-  if (lastAnalysisTime != null) {
+  if (lastAnalysis.time != null) {
     long currentTime = System.currentTimeMillis()
     // Handle system clock changes
-    if (lastAnalysisTime > currentTime) {
-      echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
+    if (lastAnalysis.time > currentTime) {
+      echo "sonarqubeWhenExpression: lastAnalysis.time is in the future, system time changed?  Will run analysis."
       return true
     }
-    if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
-      echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
+    if ((currentTime - lastAnalysis.time) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
+      echo "sonarqubeWhenExpression: lastAnalysis.time is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
       return true
     }
   }
@@ -249,7 +251,7 @@ set -e
 set -o pipefail
 set -f
 # Make sure previous commit still exists
-if ${niceCmd}git cat-file -e '${lastAnalysisGitCommit}^{commit}'
+if ${niceCmd}git cat-file -e '${lastAnalysis.gitCommit}^{commit}'
 then
   # Paths are relative to the Git repository root
   cd "\$(${niceCmd}git rev-parse --show-toplevel)"
@@ -261,7 +263,7 @@ then
         -e 's#:(exclude)/#:(exclude)#' \
         -e 's#/\$#/**#'
   )
-  ${niceCmd}git diff --name-only '${lastAnalysisGitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
+  ${niceCmd}git diff --name-only '${lastAnalysis.gitCommit}' HEAD -- "\${pathspecs[@]}" | wc -l
 else
   echo -1
 fi
@@ -269,7 +271,7 @@ fi
     returnStdout: true
   ).trim().toInteger()
   if (numChanges == -1) {
-    echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
+    echo "sonarqubeWhenExpression: previous commit ${lastAnalysis.gitCommit} not found, will run analysis."
     return true
   } else if (numChanges > 0) {
     echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
