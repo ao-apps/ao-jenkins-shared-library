@@ -23,7 +23,7 @@ buildJdks
 
     Must contain deployJdk.
 
-    Defaults to ['11', '17', '21', '25', '26']
+    Defaults to ['11', '17', '21', '25', '27']
     Changes must be copied to matrix axes.
 
 testJdks
@@ -33,7 +33,7 @@ testJdks
     Must contain deployJdk.
     Must be a subset of buildJdks.
 
-    Defaults to ['11', '17', '21', '25', '26']
+    Defaults to ['11', '17', '21', '25', '27']
     Changes must be copied to matrix axes.
 
 upstreamProjects
