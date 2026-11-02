@@ -601,7 +601,8 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
  * Finds the upstream projects for the given job.
  * Returns an array of upstream projects, possibly empty but never null
  */
-private def getUpstreamProjects(jenkins, upstreamProjectsCache, workflowJob) {
+@NonCPS
+private static def getUpstreamProjects(jenkins, upstreamProjectsCache, workflowJob) {
   def fullName = workflowJob.fullName
   def upstreamProjects = upstreamProjectsCache[fullName]
   if (upstreamProjects == null) {
@@ -624,7 +625,8 @@ private def getUpstreamProjects(jenkins, upstreamProjectsCache, workflowJob) {
 /*
  * Gets the set of full names for the given workflowJob and all transitive upstream projects.
  */
-private def getAllUpstreamProjects(jenkins, upstreamProjectsCache, allUpstreamProjectsCache, workflowJob) {
+@NonCPS
+private static def getAllUpstreamProjects(jenkins, upstreamProjectsCache, allUpstreamProjectsCache, workflowJob) {
   def fullName = workflowJob.fullName
   def allUpstreamProjects = allUpstreamProjectsCache[fullName]
   if (allUpstreamProjects == null) {
@@ -661,7 +663,8 @@ private def getAllUpstreamProjects(jenkins, upstreamProjectsCache, allUpstreamPr
  *
  * 2) Removes direct upstream projects that are also transitive through others
  */
-private def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, upstreamProjects) {
+@NonCPS
+private static def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflowJob, upstreamProjects) {
   // Quick unique by name, and ensures a new object to not affect parameter
   upstreamProjects = upstreamProjects.unique()
   // Find the set of all projects for each upstreamProject
@@ -713,7 +716,8 @@ private def pruneUpstreamProjects(jenkins, upstreamProjectsCache, currentWorkflo
  * Mapping from project full name to depth, where final depth is >= 1
  * During traversal, a project is first added to the map with a value of 0, which is used to detect graph loops
  */
-private def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamProjects) {
+@NonCPS
+private static def getDepth(jenkins, upstreamProjectsCache, depthMap, workflowJob, jobUpstreamProjects) {
   def fullName = workflowJob.fullName
   def depth = depthMap[fullName]
   if (depth == null) {
@@ -756,7 +760,8 @@ def continueCurrentBuild() {
 //
 
 // Make sure working tree not modified after checkout
-private def checkTreeUnmodifiedScriptCheckout(niceCmd) {
+@NonCPS
+private static def checkTreeUnmodifiedScriptCheckout(niceCmd) {
   return """#!/bin/bash
 s="\$(${niceCmd}git status --short)"
 if [ "\$s" != "" ]
@@ -769,7 +774,8 @@ fi
 }
 
 // Make sure working tree not modified by build or test
-private def checkTreeUnmodifiedScriptBuild(niceCmd) {
+@NonCPS
+private static def checkTreeUnmodifiedScriptBuild(niceCmd) {
   return """#!/bin/bash
 s="\$(${niceCmd}git status --short)"
 if [ "\$s" != "" ]
@@ -782,7 +788,8 @@ fi
 }
 
 // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
-private def moveSurefireReportsScript() {
+@NonCPS
+private static def moveSurefireReportsScript() {
   return """#!/bin/bash
 if [ -d target/surefire-reports ]
 then
@@ -792,7 +799,8 @@ fi
 }
 
 // Restore surefire-reports
-private def restoreSurefireReportsScript() {
+@NonCPS
+private static def restoreSurefireReportsScript() {
   return """#!/bin/bash
 if [ -d target/surefire-reports.do-not-report-twice ]
 then
@@ -802,7 +810,8 @@ fi
 }
 
 // Make sure working tree not modified by deploy
-private def checkTreeUnmodifiedScriptDeploy(niceCmd) {
+@NonCPS
+private static def checkTreeUnmodifiedScriptDeploy(niceCmd) {
   return """#!/bin/bash
 s="\$(${niceCmd}git status --short)"
 if [ "\$s" != "" ]
