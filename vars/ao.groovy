@@ -174,13 +174,15 @@ class Utils {
   }
 }
 
+// Set in setVariables and used in later functions
+@Field
+String projectDir
+@Field
+Integer lockPriority
+
 def testWhenExpression() {
   return fileExists(projectDir + '/src/test')
 }
-
-// Set in setVariables and used in later functions
-@Field
-Integer lockPriority
 
 def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('buildDiscarder')) {
@@ -289,7 +291,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
     }
     scriptBinding.setVariable('projectDir', defaultProjectDir)
   }
-  def projectDir = scriptBinding.getVariable('projectDir')
+  projectDir = scriptBinding.getVariable('projectDir')
 
   if (!scriptBinding.hasVariable('disableSubmodules')) {
     scriptBinding.setVariable('disableSubmodules', true)
