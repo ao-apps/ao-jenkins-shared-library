@@ -156,24 +156,6 @@ class Constants {
   static final String STAGE_CONCURRENCY_LIMITER_PREFIX = "stage-concurrency-limiter-"
 }
 
-class Utils {
-  /**
-   * Wraps a closure to memoize its result after the first call.
-   * Works for any return value, including false or null.
-   */
-  static Closure memoize(Closure c) {
-    def cached = null
-    def computed = false
-    return {
-      if (!computed) {
-        cached = c.call()
-        computed = true
-      }
-      return cached
-    }
-  }
-}
-
 // Set in setVariables and used in later functions
 @Field private String projectDir
 @Field private Integer lockPriority
@@ -192,76 +174,75 @@ def defaultSonarqubeEnabledExpression() {
 }
 @Field private Closure sonarqubeEnabledExpression
 
-def defaultSonarqubeWhenExpression() {
-  Utils.memoize {
-    // Must be enabled
-    def sonarEnabled = sonarqubeEnabledExpression()
-    def run = currentBuild.rawBuild
-    run.addAction(new ParametersAction(
-        new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
-    ))
-    run.save()
-    echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
-    if (!sonarEnabled) {
-      echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
-      return false
-    }
+private def defaultSonarqubeWhenExpressionImpl() {
+  // Must be enabled
+  def sonarEnabled = sonarqubeEnabledExpression()
+  def run = currentBuild.rawBuild
+  run.addAction(new ParametersAction(
+      new BooleanParameterValue(Constants.SONAR_ENABLED, sonarEnabled)
+  ))
+  run.save()
+  echo "sonarqubeWhenExpression: saved: ${Constants.SONAR_ENABLED} = ${sonarEnabled}"
+  if (!sonarEnabled) {
+    echo "sonarqubeWhenExpression: SonarQube disabled on this project, skipping."
+    return false
+  }
 
-    // Support manual configuration via parameters
-    def sonarQubeAnalysisMode = params.sonarQubeAnalysis ?: 'Auto'
-    if (sonarQubeAnalysisMode == 'Force') {
-      echo "sonarqubeWhenExpression: analysis forced by parameter."
-      return true
-    }
-    if (sonarQubeAnalysisMode == 'Skip') {
-      echo "sonarqubeWhenExpression: analysis skipped by parameter."
-      return false
-    }
+  // Support manual configuration via parameters
+  def sonarQubeAnalysisMode = params.sonarQubeAnalysis ?: 'Auto'
+  if (sonarQubeAnalysisMode == 'Force') {
+    echo "sonarqubeWhenExpression: analysis forced by parameter."
+    return true
+  }
+  if (sonarQubeAnalysisMode == 'Skip') {
+    echo "sonarqubeWhenExpression: analysis skipped by parameter."
+    return false
+  }
 
-    // Find the most recent build that ran SonarQube analysis
-    def lastAnalysisGitCommit = null
-    def lastAnalysisTime = null
-    def lastAnalysisAnalyzeNowReason = null
-    def previous = run.previousBuild
-    FIND_LAST_ANALYSIS:
-    while (previous != null) {
-      def actions = previous.getActions(ParametersAction)
-      for (action in actions) {
-        def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
-        def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
-        if (gitCommit != null && time != null) {
-          lastAnalysisGitCommit = gitCommit
-          lastAnalysisTime = time
-          lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
-          break FIND_LAST_ANALYSIS
-        }
+  // Find the most recent build that ran SonarQube analysis
+  def lastAnalysisGitCommit = null
+  def lastAnalysisTime = null
+  def lastAnalysisAnalyzeNowReason = null
+  def previous = run.previousBuild
+  FIND_LAST_ANALYSIS:
+  while (previous != null) {
+    def actions = previous.getActions(ParametersAction)
+    for (action in actions) {
+      def gitCommit = action.getParameter(Constants.SONAR_GIT_COMMIT)?.value
+      def time = action.getParameter(Constants.SONAR_ANALYSIS_TIME)?.value?.toLong()
+      if (gitCommit != null && time != null) {
+        lastAnalysisGitCommit = gitCommit
+        lastAnalysisTime = time
+        lastAnalysisAnalyzeNowReason = action.getParameter(Constants.SONAR_ANALYZE_NOW_REASON)?.value
+        break FIND_LAST_ANALYSIS
       }
-      previous = previous.previousBuild
     }
-    if (lastAnalysisGitCommit == null) {
-      echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
+    previous = previous.previousBuild
+  }
+  if (lastAnalysisGitCommit == null) {
+    echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
+    return true
+  }
+  def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
+  if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
+    echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
+    return true
+  }
+  if (lastAnalysisTime != null) {
+    long currentTime = System.currentTimeMillis()
+    // Handle system clock changes
+    if (lastAnalysisTime > currentTime) {
+      echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
       return true
     }
-    def envAnalyzeNowReason = env[Constants.SONAR_ANALYZE_NOW_REASON]
-    if (envAnalyzeNowReason != null && envAnalyzeNowReason != lastAnalysisAnalyzeNowReason) {
-      echo "sonarqubeWhenExpression: ${Constants.SONAR_ANALYZE_NOW_REASON}: \"${envAnalyzeNowReason}\".  Will run analysis."
+    if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
+      echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
       return true
     }
-    if (lastAnalysisTime != null) {
-      long currentTime = System.currentTimeMillis()
-      // Handle system clock changes
-      if (lastAnalysisTime > currentTime) {
-        echo "sonarqubeWhenExpression: lastAnalysisTime is in the future, system time changed?  Will run analysis."
-        return true
-      }
-      if ((currentTime - lastAnalysisTime) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
-        echo "sonarqubeWhenExpression: lastAnalysisTime is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
-        return true
-      }
-    }
-    // git diff to decide
-    def numChanges = sh(
-      script: """#!/bin/bash
+  }
+  // git diff to decide
+  def numChanges = sh(
+    script: """#!/bin/bash
 set -e
 set -o pipefail
 set -f
@@ -283,19 +264,27 @@ else
   echo -1
 fi
 """,
-      returnStdout: true
-    ).trim().toInteger()
-    if (numChanges == -1) {
-      echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
-      return true
-    } else if (numChanges > 0) {
-      echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
-      return true
-    } else {
-      echo "sonarqubeWhenExpression: no files changed since last analysis, skipping."
-      return false
-    }
+    returnStdout: true
+  ).trim().toInteger()
+  if (numChanges == -1) {
+    echo "sonarqubeWhenExpression: previous commit ${lastAnalysisGitCommit} not found, will run analysis."
+    return true
+  } else if (numChanges > 0) {
+    echo "sonarqubeWhenExpression: ${numChanges} file${numChanges == 1 ? '' : 's'} changed since last analysis, will run analysis."
+    return true
+  } else {
+    echo "sonarqubeWhenExpression: no files changed since last analysis, skipping."
+    return false
   }
+}
+@Field private boolean sonarqubeWhenExpressionComputed
+@Field private boolean sonarqubeWhenExpressionResult
+def defaultSonarqubeWhenExpression() {
+  if (!sonarqubeWhenExpressionComputed) {
+    sonarqubeWhenExpressionResult = defaultSonarqubeWhenExpressionImpl()
+    sonarqubeWhenExpressionComputed = true
+  }
+  return sonarqubeWhenExpressionResult
 }
 
 def setVariables(scriptBinding, currentBuild, scm, params) {
