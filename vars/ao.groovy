@@ -1042,7 +1042,7 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
   ) {
     withTimeoutHandling(Timeouts.BUILD_STEPS_TIMEOUT, {
       dir(projectDir) {
-        def jdkRepository = "repository-jdk-$jdk"
+        def jdkRepository = "repository-jdk-$jdk".toString()
         jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
@@ -1080,7 +1080,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
       def coverage  = "${(jdk == deployJdk && testJdk == deployJdk && fileExists(projectDir + '/src/main/java') && fileExists(projectDir + '/src/test')) ? '-Pcoverage' : '-P!coverage'}"
       def testGoals = "${(coverage == '-Pcoverage') ? 'jacoco:prepare-agent surefire:test jacoco:report' : 'surefire:test'}"
       dir(projectDir) {
-        def jdkRepository = "repository-jdk-$testJdk"
+        def jdkRepository = "repository-jdk-$testJdk".toString()
         jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
@@ -1163,7 +1163,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
         )
         // Temporarily move surefire-reports before withMaven to avoid duplicate logging of test results
         sh moveSurefireReportsScript()
-        def jdkRepository = "repository-jdk-$deployJdk"
+        def jdkRepository = "repository-jdk-$deployJdk".toString()
         jdkRepositoriesUsed.add(jdkRepository)
         withMaven(
           maven: maven,
@@ -1204,7 +1204,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
         dir(projectDir) {
           withSonarQubeEnv(installationName: 'AO SonarQube') {
             long analysisTime = System.currentTimeMillis()
-            def jdkRepository = "repository-jdk-$deployJdk"
+            def jdkRepository = "repository-jdk-$deployJdk".toString()
             if (!jdkRepositoriesUsed.contains(jdkRepository)) {
               throw new AssertionError("jdkRepository should have already been added to jdkRepositoriesUsed during Deploy: $jdkRepository")
             }
