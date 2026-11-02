@@ -178,10 +178,10 @@ class Utils {
 @Field
 Integer lockPriority
 
-def setVariables(binding, currentBuild, scm, params) {
-  if (!binding.hasVariable('buildDiscarder')) {
+def setVariables(scriptBinding, currentBuild, scm, params) {
+  if (!scriptBinding.hasVariable('buildDiscarder')) {
     // See https://plugins.jenkins.io/build-history-manager/
-    binding.setVariable('buildDiscarder', BuildHistoryManager([
+    scriptBinding.setVariable('buildDiscarder', BuildHistoryManager([
       [
         // Keep most recent not_built build, which is useful to know which
         // builds have been superseded during their quiet period.
@@ -218,39 +218,39 @@ def setVariables(binding, currentBuild, scm, params) {
     ]))
   }
 
-  binding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
-  binding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
-  binding.setVariable('ossindexEnabled_description', Parameters.ossindexEnabled_description)
-  binding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
-  binding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
+  scriptBinding.setVariable('BuildPriority_description', Parameters.BuildPriority_description)
+  scriptBinding.setVariable('abortOnUnreadyDependency_description', Parameters.abortOnUnreadyDependency_description)
+  scriptBinding.setVariable('ossindexEnabled_description', Parameters.ossindexEnabled_description)
+  scriptBinding.setVariable('requireLastBuild_description', Parameters.requireLastBuild_description)
+  scriptBinding.setVariable('mavenDebug_description', Parameters.mavenDebug_description)
 
-  binding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
-  binding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
+  scriptBinding.setVariable('PIPELINE_TIMEOUT', Timeouts.PIPELINE_TIMEOUT)
+  scriptBinding.setVariable('TIMEOUT_UNIT', Timeouts.TIMEOUT_UNIT)
 
-  if (!binding.hasVariable('deployJdk')) {
+  if (!scriptBinding.hasVariable('deployJdk')) {
     // Matches build.yml:java-version
-    binding.setVariable('deployJdk', '21')
+    scriptBinding.setVariable('deployJdk', '21')
   }
-  def deployJdk = binding.getVariable('deployJdk')
+  def deployJdk = scriptBinding.getVariable('deployJdk')
 
-  if (!binding.hasVariable('buildJdks')) {
-    binding.setVariable(
+  if (!scriptBinding.hasVariable('buildJdks')) {
+    scriptBinding.setVariable(
       'buildJdks',
       ['11', '17', '21', '25', '27'] // Changes must be copied to matrix axes.
     )
   }
-  def buildJdks = binding.getVariable('buildJdks')
+  def buildJdks = scriptBinding.getVariable('buildJdks')
   if (!buildJdks.contains(deployJdk)) {
     throw new Exception("Invalid configuration: deployJdk ($deployJdk) must be in buildJdks ($buildJdks)")
   }
 
-  if (!binding.hasVariable('testJdks')) {
-    binding.setVariable(
+  if (!scriptBinding.hasVariable('testJdks')) {
+    scriptBinding.setVariable(
       'testJdks',
       ['11', '17', '21', '25', '27'] // Changes must be copied to matrix axes.
     )
   }
-  def testJdks = binding.getVariable('testJdks')
+  def testJdks = scriptBinding.getVariable('testJdks')
   if (!testJdks.contains(deployJdk)) {
     throw new Exception("Invalid configuration: deployJdk ($deployJdk) must be in testJdks ($testJdks)")
   }
@@ -259,19 +259,19 @@ def setVariables(binding, currentBuild, scm, params) {
     throw new Exception("Invalid configuration: testJdks contains values not in buildJdks: $missing")
   }
 
-  if (!binding.hasVariable('upstreamProjects')) {
-    binding.setVariable('upstreamProjects', [])
+  if (!scriptBinding.hasVariable('upstreamProjects')) {
+    scriptBinding.setVariable('upstreamProjects', [])
   }
-  def upstreamProjects = binding.getVariable('upstreamProjects')
+  def upstreamProjects = scriptBinding.getVariable('upstreamProjects')
 
-  if (!binding.hasVariable('cron')) {
-    binding.setVariable('cron', upstreamProjects ?
+  if (!scriptBinding.hasVariable('cron')) {
+    scriptBinding.setVariable('cron', upstreamProjects ?
       '0 0 31 2 *': // Never
       'H 4 * * 0'   // Sunday 10 PM CST
     )
   }
 
-  if (!binding.hasVariable('projectDir')) {
+  if (!scriptBinding.hasVariable('projectDir')) {
     def scriptPath = currentBuild.rawBuild.parent.definition.scriptPath
     def defaultProjectDir
     if (scriptPath == 'Jenkinsfile') {
@@ -283,15 +283,15 @@ def setVariables(binding, currentBuild, scm, params) {
     } else {
       throw new Exception("Unexpected value for 'scriptPath': '$scriptPath'")
     }
-    binding.setVariable('projectDir', defaultProjectDir)
+    scriptBinding.setVariable('projectDir', defaultProjectDir)
   }
-  def projectDir = binding.getVariable('projectDir')
+  def projectDir = scriptBinding.getVariable('projectDir')
 
-  if (!binding.hasVariable('disableSubmodules')) {
-    binding.setVariable('disableSubmodules', true)
+  if (!scriptBinding.hasVariable('disableSubmodules')) {
+    scriptBinding.setVariable('disableSubmodules', true)
   }
 
-  if (!binding.hasVariable('sparseCheckoutPaths')) {
+  if (!scriptBinding.hasVariable('sparseCheckoutPaths')) {
     def defaultSparseCheckoutPaths
     if (projectDir == '.') {
       defaultSparseCheckoutPaths = [
@@ -309,27 +309,27 @@ def setVariables(binding, currentBuild, scm, params) {
     } else {
       throw new Exception("Unexpected value for 'projectDir': '$projectDir'")
     }
-    binding.setVariable('sparseCheckoutPaths', defaultSparseCheckoutPaths)
+    scriptBinding.setVariable('sparseCheckoutPaths', defaultSparseCheckoutPaths)
   }
 
-  if (!binding.hasVariable('scmUrl')) {
+  if (!scriptBinding.hasVariable('scmUrl')) {
     // Automatically determine Git URL: https://stackoverflow.com/a/38255364
     if (scm.userRemoteConfigs.size() == 1) {
-      binding.setVariable('scmUrl', scm.userRemoteConfigs[0].url)
+      scriptBinding.setVariable('scmUrl', scm.userRemoteConfigs[0].url)
     } else {
       throw new Exception("Precisely one SCM remote expected: '" + scm.userRemoteConfigs + "'")
     }
   }
-  def scmUrl = binding.getVariable('scmUrl')
+  def scmUrl = scriptBinding.getVariable('scmUrl')
 
-  if (!binding.hasVariable('scmBranch')) {
+  if (!scriptBinding.hasVariable('scmBranch')) {
     // Automatically determine branch
     if (scm.branches.size() == 1) {
       def scmBranchPrefix = 'refs/heads/'
       def defaultScmBranch = scm.branches[0].name
       if (defaultScmBranch.startsWith(scmBranchPrefix)) {
         defaultScmBranch = defaultScmBranch.substring(scmBranchPrefix.length())
-        binding.setVariable('scmBranch', defaultScmBranch)
+        scriptBinding.setVariable('scmBranch', defaultScmBranch)
       } else {
         throw new Exception("SCM branch does not start with '$scmBranchPrefix': '$defaultScmBranch'")
       }
@@ -338,7 +338,7 @@ def setVariables(binding, currentBuild, scm, params) {
     }
   }
 
-  if (!binding.hasVariable('scmBrowser')) {
+  if (!scriptBinding.hasVariable('scmBrowser')) {
     // Automatically determine SCM browser
     def aoappsPrefix        = '/srv/git/ao-apps/'
     def newmediaworksPrefix = '/srv/git/nmwoss/'
@@ -367,7 +367,7 @@ def setVariables(binding, currentBuild, scm, params) {
     } else {
       throw new Exception("Unexpected SCM URL: '$scmUrl'")
     }
-    binding.setVariable('scmBrowser', defaultScmBrowser)
+    scriptBinding.setVariable('scmBrowser', defaultScmBrowser)
   }
 
   // Variables temporarily used in project resolution
@@ -381,18 +381,18 @@ def setVariables(binding, currentBuild, scm, params) {
 
   // Prune set of upstreamProjects
   def prunedUpstreamProjects = pruneUpstreamProjects(tempJenkins, tempUpstreamProjectsCache, tempCurrentWorkflowJob, upstreamProjects)
-  binding.setVariable('prunedUpstreamProjects', prunedUpstreamProjects)
+  scriptBinding.setVariable('prunedUpstreamProjects', prunedUpstreamProjects)
 
-  if (!binding.hasVariable('buildPriority')) {
+  if (!scriptBinding.hasVariable('buildPriority')) {
     // Find the longest path through all upstream projects, which will be used as both job priority and
     // nice value.  This will ensure proper build order in all cases.  However, it may prevent some
     // possible concurrency since reduction to simple job priority number loses information about which
     // are critical paths on the upstream project graph.
     def defaultBuildPriority = getDepth(tempJenkins, tempUpstreamProjectsCache, [:], tempCurrentWorkflowJob, prunedUpstreamProjects)
     if (defaultBuildPriority > 30) throw new Exception("defaultBuildPriority > 30, increase global configuration: $defaultBuildPriority")
-    binding.setVariable('buildPriority', defaultBuildPriority)
+    scriptBinding.setVariable('buildPriority', defaultBuildPriority)
   }
-  def buildPriority = binding.getVariable('buildPriority')
+  def buildPriority = scriptBinding.getVariable('buildPriority')
   if (buildPriority < 1 || buildPriority > 30) {
     throw new Exception("buildPriority out of range 1 - 30: $buildPriority")
   }
@@ -401,47 +401,47 @@ def setVariables(binding, currentBuild, scm, params) {
   def buildPriorityFromParam = (params.BuildPriority == null) ? buildPriority : (params.BuildPriority as Integer)
 
   // Lock priority is opposite, where higher values are done first
-  if (!binding.hasVariable('lockPriority')) {
-    binding.setVariable('lockPriority', -buildPriorityFromParam)
+  if (!scriptBinding.hasVariable('lockPriority')) {
+    scriptBinding.setVariable('lockPriority', -buildPriorityFromParam)
   }
-  this.lockPriority = binding.getVariable('lockPriority')
+  this.lockPriority = scriptBinding.getVariable('lockPriority')
 
-  if (!binding.hasVariable('quietPeriod')) {
-    binding.setVariable('quietPeriod', 5)
+  if (!scriptBinding.hasVariable('quietPeriod')) {
+    scriptBinding.setVariable('quietPeriod', 5)
   }
 
-  if (!binding.hasVariable('nice')) {
+  if (!scriptBinding.hasVariable('nice')) {
     def defaultNice = buildPriorityFromParam - 1
     if (defaultNice < 0) defaultNice = 0
     else if (defaultNice > 19) defaultNice = 19
-    binding.setVariable('nice', defaultNice)
+    scriptBinding.setVariable('nice', defaultNice)
   }
-  def nice = binding.getVariable('nice')
+  def nice = scriptBinding.getVariable('nice')
 
-  if (!binding.hasVariable('maven')) {
-    binding.setVariable('maven', 'maven-3')
-  }
-
-  if (!binding.hasVariable('mavenOpts')) {
-    binding.setVariable('mavenOpts', '-Djansi.force')
+  if (!scriptBinding.hasVariable('maven')) {
+    scriptBinding.setVariable('maven', 'maven-3')
   }
 
-  if (!binding.hasVariable('extraProfiles')) {
-    binding.setVariable('extraProfiles', [])
+  if (!scriptBinding.hasVariable('mavenOpts')) {
+    scriptBinding.setVariable('mavenOpts', '-Djansi.force')
   }
-  def extraProfiles = binding.getVariable('extraProfiles')
 
-  if (!binding.hasVariable('testWhenExpression')) {
-    binding.setVariable('testWhenExpression',
+  if (!scriptBinding.hasVariable('extraProfiles')) {
+    scriptBinding.setVariable('extraProfiles', [])
+  }
+  def extraProfiles = scriptBinding.getVariable('extraProfiles')
+
+  if (!scriptBinding.hasVariable('testWhenExpression')) {
+    scriptBinding.setVariable('testWhenExpression',
       {return fileExists(projectDir + '/src/test')}
     )
   }
 
   // Determine nice command prefix or empty string for none
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
-  binding.setVariable('niceCmd', niceCmd)
+  scriptBinding.setVariable('niceCmd', niceCmd)
 
-  if (!binding.hasVariable('sonarQubeAnalysis_choices')) {
+  if (!scriptBinding.hasVariable('sonarQubeAnalysis_choices')) {
     def lastAnalysisEnabled = null
     def previous = currentBuild.rawBuild.previousBuild
     while (previous != null) {
@@ -454,18 +454,18 @@ def setVariables(binding, currentBuild, scm, params) {
       previous = previous.previousBuild
     }
     if (lastAnalysisEnabled == null || lastAnalysisEnabled) {
-      binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
+      scriptBinding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices)
     } else {
-      binding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices_disabled)
+      scriptBinding.setVariable('sonarQubeAnalysis_choices', Parameters.sonarQubeAnalysis_choices_disabled)
     }
   }
 
-  if (!binding.hasVariable('sonarQubeAnalysis_description')) {
-    binding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
+  if (!scriptBinding.hasVariable('sonarQubeAnalysis_description')) {
+    scriptBinding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
   }
 
-  if (!binding.hasVariable('sonarqubeEnabledExpression')) {
-    binding.setVariable('sonarqubeEnabledExpression', {
+  if (!scriptBinding.hasVariable('sonarqubeEnabledExpression')) {
+    scriptBinding.setVariable('sonarqubeEnabledExpression', {
       // Do not run SonarQube for projects that are run in GitHub Actions.
       // They use sonarcloud.io instead.
       //
@@ -474,12 +474,12 @@ def setVariables(binding, currentBuild, scm, params) {
       )
     })
   }
-  def sonarqubeEnabledExpression = binding.getVariable('sonarqubeEnabledExpression')
+  def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
 
-  if (!binding.hasVariable('sonarqubeWhenExpression')) {
+  if (!scriptBinding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
     def sonarqubeWhenExpressionResult = null
-    binding.setVariable('sonarqubeWhenExpression', Utils.memoize {
+    scriptBinding.setVariable('sonarqubeWhenExpression', Utils.memoize {
       // Must be enabled
       def sonarEnabled = sonarqubeEnabledExpression()
       def run = currentBuild.rawBuild
@@ -584,8 +584,8 @@ fi
     })
   }
 
-  if (!binding.hasVariable('failureEmailTo')) {
-    binding.setVariable('failureEmailTo', 'support@aoindustries.com')
+  if (!scriptBinding.hasVariable('failureEmailTo')) {
+    scriptBinding.setVariable('failureEmailTo', 'support@aoindustries.com')
   }
 
   // Common settings
@@ -604,10 +604,10 @@ fi
   if (params.mavenDebug) {
     mvnCommonArgs.add(0, '-X')
   }
-  binding.setVariable('mvnCommon', mvnCommonArgs.join(' '))
+  scriptBinding.setVariable('mvnCommon', mvnCommonArgs.join(' '))
 
   // Phases for Build stage
-  binding.setVariable('buildPhases', 'clean process-test-classes')
+  scriptBinding.setVariable('buildPhases', 'clean process-test-classes')
 }
 
 /*
