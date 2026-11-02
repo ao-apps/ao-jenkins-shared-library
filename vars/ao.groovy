@@ -172,9 +172,9 @@ def defaultSonarqubeEnabledExpression() {
     projectDir + '/.github/workflows/build.yml'
   )
 }
-@Field private Closure sonarqubeEnabledExpression
 
 private def defaultSonarqubeWhenExpressionImpl() {
+  def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
   // Must be enabled
   def sonarEnabled = sonarqubeEnabledExpression()
   def run = currentBuild.rawBuild
@@ -540,10 +540,6 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
   def extraProfiles = scriptBinding.getVariable('extraProfiles')
 
-  if (!scriptBinding.hasVariable('testWhenExpression')) {
-    scriptBinding.setVariable('testWhenExpression', this.&defaultTestWhenExpression)
-  }
-
   // Determine nice command prefix or empty string for none
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
   scriptBinding.setVariable('niceCmd', niceCmd)
@@ -569,15 +565,6 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
 
   if (!scriptBinding.hasVariable('sonarQubeAnalysis_description')) {
     scriptBinding.setVariable('sonarQubeAnalysis_description', Parameters.sonarQubeAnalysis_description)
-  }
-
-  if (!scriptBinding.hasVariable('sonarqubeEnabledExpression')) {
-    scriptBinding.setVariable('sonarqubeEnabledExpression', this.&defaultSonarqubeEnabledExpression)
-  }
-  sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
-
-  if (!scriptBinding.hasVariable('sonarqubeWhenExpression')) {
-    scriptBinding.setVariable('sonarqubeWhenExpression', this.&defaultSonarqubeWhenExpression)
   }
 
   if (!scriptBinding.hasVariable('failureEmailTo')) {
