@@ -1204,6 +1204,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
             run.getActions(ParametersAction)
               .findAll { it?.getParameter(Constants.SONAR_GIT_COMMIT) || it?.getParameter(Constants.SONAR_ANALYSIS_TIME) }
               .each { run.removeAction(it) }
+            run = null // Do not try to serialize
             def gitCommit = sh(
               script: "${niceCmd}git rev-parse HEAD",
               returnStdout: true
@@ -1218,6 +1219,7 @@ def sonarQubeAnalysisSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvn
               params << new StringParameterValue(Constants.SONAR_ANALYZE_NOW_REASON, envAnalyzeNowReason)
               msg += " with analyze now reason \"${envAnalyzeNowReason}\""
             }
+            run = currentBuild.rawBuild
             run.addAction(new ParametersAction(params))
             run.save()
             echo msg
