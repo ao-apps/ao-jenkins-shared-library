@@ -173,8 +173,7 @@ def defaultSonarqubeEnabledExpression() {
   )
 }
 
-private def defaultSonarqubeWhenExpressionImpl() {
-  def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
+private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpression) {
   // Must be enabled
   def sonarEnabled = sonarqubeEnabledExpression()
   def run = currentBuild.rawBuild
@@ -279,9 +278,9 @@ fi
 }
 @Field private boolean sonarqubeWhenExpressionComputed
 @Field private boolean sonarqubeWhenExpressionResult
-def defaultSonarqubeWhenExpression() {
+def defaultSonarqubeWhenExpression(Closure sonarqubeEnabledExpression) {
   if (!sonarqubeWhenExpressionComputed) {
-    sonarqubeWhenExpressionResult = defaultSonarqubeWhenExpressionImpl()
+    sonarqubeWhenExpressionResult = defaultSonarqubeWhenExpressionImpl(sonarqubeEnabledExpression)
     sonarqubeWhenExpressionComputed = true
   }
   return sonarqubeWhenExpressionResult
