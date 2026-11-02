@@ -184,6 +184,15 @@ def testWhenExpression() {
   return fileExists(projectDir + '/src/test')
 }
 
+def sonarqubeEnabledExpression() {
+  // Do not run SonarQube for projects that are run in GitHub Actions.
+  // They use sonarcloud.io instead.
+  //
+  return !fileExists(
+    projectDir + '/.github/workflows/build.yml'
+  )
+}
+
 def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('buildDiscarder')) {
     // See https://plugins.jenkins.io/build-history-manager/
@@ -465,14 +474,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
 
   if (!scriptBinding.hasVariable('sonarqubeEnabledExpression')) {
-    scriptBinding.setVariable('sonarqubeEnabledExpression', {
-      // Do not run SonarQube for projects that are run in GitHub Actions.
-      // They use sonarcloud.io instead.
-      //
-      return !fileExists(
-        projectDir + '/.github/workflows/build.yml'
-      )
-    })
+    scriptBinding.setVariable('sonarqubeEnabledExpression', this.&sonarqubeEnabledExpression)
   }
   def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
 
