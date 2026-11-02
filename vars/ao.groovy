@@ -174,6 +174,10 @@ class Utils {
   }
 }
 
+def testWhenExpression() {
+  return fileExists(projectDir + '/src/test')
+}
+
 // Set in setVariables and used in later functions
 @Field
 Integer lockPriority
@@ -430,12 +434,6 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
     scriptBinding.setVariable('extraProfiles', [])
   }
   def extraProfiles = scriptBinding.getVariable('extraProfiles')
-
-  if (!scriptBinding.hasVariable('testWhenExpression')) {
-    scriptBinding.setVariable('testWhenExpression',
-      {return fileExists(projectDir + '/src/test')}
-    )
-  }
 
   // Determine nice command prefix or empty string for none
   def niceCmd = (nice == 0) ? '' : "nice -n$nice "
