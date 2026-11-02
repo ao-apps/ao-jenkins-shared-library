@@ -192,6 +192,7 @@ def defaultSonarqubeEnabledExpression() {
     projectDir + '/.github/workflows/build.yml'
   )
 }
+@Field Closure sonarqubeEnabledExpression
 
 def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('buildDiscarder')) {
@@ -480,7 +481,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('sonarqubeEnabledExpression')) {
     scriptBinding.setVariable('sonarqubeEnabledExpression', this.&defaultSonarqubeEnabledExpression)
   }
-  def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
+  sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
 
   if (!scriptBinding.hasVariable('sonarqubeWhenExpression')) {
     // Compute once when first needed and store result
