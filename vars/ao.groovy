@@ -1106,7 +1106,7 @@ def testSteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon, jdk, 
  * Clean any per-JDK repositories not used by this build.
  */
 private def cleanupUnusedJdkRepositories() {
-  echo "JDK repositories used: ${jdkRepositoriesUsed}"
+  //echo "JDK repositories used: ${jdkRepositoriesUsed}"
   def repositoriesOutput = sh(
     script: '''
       cd .m2 &&
@@ -1117,23 +1117,22 @@ private def cleanupUnusedJdkRepositories() {
     returnStdout: true
   ).trim()
   def repositories = repositoriesOutput ? repositoriesOutput.split('\n') : []
-  echo "Found ${repositories.size()} matching Maven repository directories"
-  echo "Used set class: ${jdkRepositoriesUsed.getClass().name}"
-  jdkRepositoriesUsed.each { repository ->
-    echo "Used: '${repository}' (${repository.getClass().name})"
-  }
-  repositories.each { repository ->
-    echo "Discovered: '${repository}' (${repository.getClass().name}), contains=${jdkRepositoriesUsed.contains(repository)}"
-  }
+  //echo "Found ${repositories.size()} matching Maven repository directories"
+  //jdkRepositoriesUsed.each { repository ->
+  //  echo "Used: '${repository}' (${repository.getClass().name})"
+  //}
+  //repositories.each { repository ->
+  //  echo "Discovered: '${repository}' (${repository.getClass().name}), contains=${jdkRepositoriesUsed.contains(repository)}"
+  //}
   def unusedRepositories = repositories.findAll { repository ->
     !jdkRepositoriesUsed.contains(repository)
   }
-  echo "Unused Maven repositories: ${unusedRepositories}"
+  //echo "Unused Maven repositories: ${unusedRepositories}"
   unusedRepositories.each { repository ->
     echo "Removing unused Maven repository: ${repository}"
-    // TODO dir(".m2/$repository") {
-    // TODO   deleteDir()
-    // TODO }
+    dir(".m2/$repository") {
+      deleteDir()
+    }
   }
 }
 
