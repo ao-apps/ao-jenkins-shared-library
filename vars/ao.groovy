@@ -159,6 +159,7 @@ class Constants {
 // Set in setVariables and used in later functions
 @Field private String projectDir
 @Field private Integer lockPriority
+@Field private String niceCmd
 
 def defaultTestWhenExpression() {
   return fileExists(projectDir + '/src/test')
@@ -540,7 +541,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   def extraProfiles = scriptBinding.getVariable('extraProfiles')
 
   // Determine nice command prefix or empty string for none
-  def niceCmd = (nice == 0) ? '' : "nice -n$nice "
+  niceCmd = (nice == 0) ? '' : "nice -n$nice "
   scriptBinding.setVariable('niceCmd', niceCmd)
 
   if (!scriptBinding.hasVariable('sonarQubeAnalysis_choices')) {
