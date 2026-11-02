@@ -180,11 +180,11 @@ String projectDir
 @Field
 Integer lockPriority
 
-def testWhenExpression() {
+def defaultTestWhenExpression() {
   return fileExists(projectDir + '/src/test')
 }
 
-def sonarqubeEnabledExpression() {
+def defaultSonarqubeEnabledExpression() {
   // Do not run SonarQube for projects that are run in GitHub Actions.
   // They use sonarcloud.io instead.
   //
@@ -447,7 +447,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   def extraProfiles = scriptBinding.getVariable('extraProfiles')
 
   if (!scriptBinding.hasVariable('testWhenExpression')) {
-    scriptBinding.setVariable('testWhenExpression', this.&testWhenExpression)
+    scriptBinding.setVariable('testWhenExpression', this.&defaultTestWhenExpression)
   }
 
   // Determine nice command prefix or empty string for none
@@ -478,7 +478,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
 
   if (!scriptBinding.hasVariable('sonarqubeEnabledExpression')) {
-    scriptBinding.setVariable('sonarqubeEnabledExpression', this.&sonarqubeEnabledExpression)
+    scriptBinding.setVariable('sonarqubeEnabledExpression', this.&defaultSonarqubeEnabledExpression)
   }
   def sonarqubeEnabledExpression = scriptBinding.getVariable('sonarqubeEnabledExpression')
 
