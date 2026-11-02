@@ -220,6 +220,7 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
     }
     previous = previous.previousBuild
   }
+  previous = null // Do not try to serialize
   if (lastAnalysisGitCommit == null) {
     echo "sonarqubeWhenExpression: last analysis not found, will run analysis."
     return true
