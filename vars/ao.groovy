@@ -204,6 +204,7 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
   def lastAnalysisTime = null
   def lastAnalysisAnalyzeNowReason = null
   def previous = run.previousBuild
+  run = null // Do not try to serialize
   FIND_LAST_ANALYSIS:
   while (previous != null) {
     def actions = previous.getActions(ParametersAction)
