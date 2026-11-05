@@ -26,6 +26,10 @@ import groovy.transform.Field
 import hudson.model.ParametersAction
 import hudson.model.BooleanParameterValue
 import hudson.model.StringParameterValue
+import java.time.DayOfWeek
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.concurrent.ConcurrentHashMap
 
 class Parameters {
@@ -134,10 +138,16 @@ class Constants {
   static final String SONAR_ANALYZE_NOW_REASON = 'SONAR_ANALYZE_NOW_REASON'
 
   /**
-   * The number of days to perform SonarQube analysis even when no files changed.
-   * Six days selected so can analyze routinely on Sundays, then only do as-needed during the following weekdays.
+   * The number of days to perform SonarQube analysis even when no files changed and it is Monday.
+   * Six days selected so can analyze routinely on early Monday mornings, then only do as-needed during the following weekdays.
    */
-  static final int SONAR_REANALYZE_DAYS = 6
+  static final int SONAR_REANALYZE_DAYS_MONDAY = 6
+
+  /**
+   * The number of days to perform SonarQube analysis even when no files changed regardless of the day of the week.
+   * This is in case the Monday analysis was missed.
+   */
+  static final int SONAR_REANALYZE_DAYS = 8
 
   /**
    * The lock label prefix used to limit stage concurrency.  This limit is applied within the inner matrix stages,
@@ -239,8 +249,16 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
       echo "sonarqubeWhenExpression: lastAnalysis.time is in the future, system time changed?  Will run analysis."
       return true
     }
-    if ((currentTime - lastAnalysis.time) >= (Constants.SONAR_REANALYZE_DAYS * 24 * 60 * 60 * 1000)) {
+    long daysSince = (currentTime - lastAnalysis.time) / Duration.ofDays(1).toMillis();
+    if (daysSince >= Constants.SONAR_REANALYZE_DAYS) {
       echo "sonarqubeWhenExpression: lastAnalysis.time is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
+      return true
+    }
+    if (
+      daysSince >= Constants.SONAR_REANALYZE_DAYS_MONDAY
+      && Instant.ofEpochMilli(currentTime).atZone(ZoneOffset.UTC).getDayOfWeek() == DayOfWeek.MONDAY
+    ) {
+      echo "sonarqubeWhenExpression: lastAnalysis.time is more than ${Constants.SONAR_REANALYZE_DAYS_MONDAY} days ago and today is Monday, will run analysis."
       return true
     }
   }
@@ -380,7 +398,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('cron')) {
     scriptBinding.setVariable('cron', upstreamProjects ?
       '0 0 31 2 *': // Never
-      'H 4 * * 0'   // Sunday 10 PM CST
+      "TZ=UTC\nH 4 * * *"   // 10 PM CST / 11 PM CDT nightly
     )
   }
 
