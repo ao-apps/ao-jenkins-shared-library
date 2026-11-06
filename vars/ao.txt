@@ -88,9 +88,16 @@ scmUrl
 
 scmBranch
 
-    The Git branch name, without and ref/path prefix
+    The Git branch name, without any ref/path prefix
     Default depends on the project's SCM settings:
         scm.branches[0].name: 'refs/heads/*' -> '*'
+
+scmReleaseBranch
+
+    The optional Git branch name that tracks releases, without any ref/path prefix.
+    When provided, an additional Sonatype OSS Index dependency audit is performed on the head of the release branch.
+    This helps ensure vulnerable releases are identified even when the current SNAPSHOT is already updated.
+    When is the same as scmBranch, the additional audit is not performed.
 
 scmBrowser
 

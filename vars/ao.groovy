@@ -90,6 +90,7 @@ class Timeouts {
   static final int SONARQUBE_ANALYSIS_STEPS_TIMEOUT   = 15
   static final int QUALITY_GATE_STEPS_TIMEOUT         = 60
   static final int ANALYSIS_STEPS_TIMEOUT             = 15
+  static final int AUDIT_RELEASE_BRANCH_STEPS_TIMEOUT = 15
 
   // Total pipeline is sum of steps with an extra half-hour cushion
   static final int PIPELINE_TIMEOUT = (
@@ -104,7 +105,8 @@ class Timeouts {
     DEPLOY_STEPS_TIMEOUT +
     SONARQUBE_ANALYSIS_STEPS_TIMEOUT +
     QUALITY_GATE_STEPS_TIMEOUT +
-    ANALYSIS_STEPS_TIMEOUT
+    ANALYSIS_STEPS_TIMEOUT +
+    AUDIT_RELEASE_BRANCH_STEPS_TIMEOUT
   )
 }
 
@@ -167,9 +169,17 @@ class Constants {
 }
 
 // Set in setVariables and used in later functions
+@Field private String deployJdk
 @Field private String projectDir
+@Field private String scmUrl
+@Field private String scmBranch
+@Field private String scmReleaseBranch
 @Field private Integer lockPriority
+@Field private String maven
+@Field private String mavenOpts
 @Field private String niceCmd
+@Field private boolean ossindexEnabled
+@Field private String mvnCommon
 
 def defaultTestWhenExpression() {
   return fileExists(projectDir + '/src/test')
@@ -249,7 +259,7 @@ private def defaultSonarqubeWhenExpressionImpl(Closure sonarqubeEnabledExpressio
       echo "sonarqubeWhenExpression: lastAnalysis.time is in the future, system time changed?  Will run analysis."
       return true
     }
-    long daysSince = (currentTime - lastAnalysis.time) / Duration.ofDays(1).toMillis();
+    long daysSince = (currentTime - lastAnalysis.time) / Duration.ofDays(1).toMillis()
     if (daysSince >= Constants.SONAR_REANALYZE_DAYS) {
       echo "sonarqubeWhenExpression: lastAnalysis.time is more than ${Constants.SONAR_REANALYZE_DAYS} days ago, will run analysis."
       return true
@@ -362,7 +372,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
     // Matches build.yml:java-version
     scriptBinding.setVariable('deployJdk', '21')
   }
-  def deployJdk = scriptBinding.getVariable('deployJdk')
+  deployJdk = scriptBinding.getVariable('deployJdk')
 
   if (!scriptBinding.hasVariable('buildJdks')) {
     scriptBinding.setVariable(
@@ -451,7 +461,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
       throw new Exception("Precisely one SCM remote expected: '" + scm.userRemoteConfigs + "'")
     }
   }
-  def scmUrl = scriptBinding.getVariable('scmUrl')
+  scmUrl = scriptBinding.getVariable('scmUrl')
 
   if (!scriptBinding.hasVariable('scmBranch')) {
     // Automatically determine branch
@@ -468,6 +478,13 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
       throw new Exception("Precisely one SCM branch expected: '" + scm.branches + "'")
     }
   }
+  scmBranch = scriptBinding.getVariable('scmBranch')
+
+  if (!scriptBinding.hasVariable('scmReleaseBranch')) {
+    // No default, only performed on projects that opt-in
+    scriptBinding.setVariable('scmReleaseBranch', '')
+  }
+  scmReleaseBranch = scriptBinding.getVariable('scmReleaseBranch')
 
   if (!scriptBinding.hasVariable('scmBrowser')) {
     // Automatically determine SCM browser
@@ -552,10 +569,12 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   if (!scriptBinding.hasVariable('maven')) {
     scriptBinding.setVariable('maven', 'maven-3')
   }
+  maven = scriptBinding.getVariable('maven')
 
   if (!scriptBinding.hasVariable('mavenOpts')) {
     scriptBinding.setVariable('mavenOpts', '-Djansi.force')
   }
+  mavenOpts = scriptBinding.getVariable('mavenOpts')
 
   if (!scriptBinding.hasVariable('extraProfiles')) {
     scriptBinding.setVariable('extraProfiles', [])
@@ -594,7 +613,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
 
   // Common settings
-  def ossindexEnabled = (params.ossindexEnabled == null || params.ossindexEnabled)
+  ossindexEnabled = (params.ossindexEnabled == null || params.ossindexEnabled.toString().toBoolean())
   def ossindexSkip = !ossindexEnabled
   //echo "params.ossindexEnabled: ${params.ossindexEnabled}, ossindexEnabled: ${ossindexEnabled}, ossindexSkip: ${ossindexSkip}"
   def mvnCommonArgs = [
@@ -610,6 +629,7 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
     mvnCommonArgs.add(0, '-X')
   }
   scriptBinding.setVariable('mvnCommon', mvnCommonArgs.join(' '))
+  mvnCommon = scriptBinding.getVariable('mvnCommon')
 
   // Phases for Build stage
   scriptBinding.setVariable('buildPhases', 'clean process-test-classes')
@@ -993,8 +1013,8 @@ def checkoutScmSteps(projectDir, niceCmd, scmUrl, scmBranch, scmBrowser, sparseC
       sh "${niceCmd}git reset --hard"
       // git clean -fdx was iterating all of /.m2 despite being ignored
       sh "${niceCmd}git clean -fx -e ${(projectDir == '.') ? '/.m2' : ('/' + projectDir + '/.m2')}"
-      // Remove target directories not remove by "git clean" since are in .gitignore
-      sh "${niceCmd}rm $projectDir/target $projectDir/target-jdk-* -rf"
+      // Remove things not removed by "git clean" since are in .gitignore
+      sh "${niceCmd}rm audit-output.log audit-release-branch audit-release-branch@* $projectDir/target $projectDir/target-jdk-* -rf"
       // Make sure working tree not modified after checkout
       sh checkTreeUnmodifiedScriptCheckout(niceCmd)
     })
@@ -1042,6 +1062,20 @@ exit 0
   }
 }
 
+private def executeMavenWithAuditLogVerification(boolean scanAuditLog, String mvnCommand) {
+  if (scanAuditLog) {
+    // tee the log to catch ossindex auth failures
+    sh "set -o pipefail; ${mvnCommand} 2>&1 | tee audit-output.log"
+    // Read the step output back to check for hidden soft warnings
+    def logContent = readFile('audit-output.log')
+    if (logContent.contains('HTTP/1.1 401 Unauthorized') || logContent.contains('Failed to fetch component-reports')) {
+      error("Sonatype OSS Index security audit failed due to Transport Authorization errors (401).")
+    }
+  } else {
+    sh "${mvnCommand}"
+  }
+}
+
 // Tracks which repositories directories have been used during the build.
 // Any .m2/repository-jdk-* directory that was not used is deleted after successful deploy.
 @Field private Set<String> jdkRepositoriesUsed = ConcurrentHashMap.newKeySet()
@@ -1063,7 +1097,10 @@ def buildSteps(projectDir, niceCmd, maven, deployJdk, mavenOpts, mvnCommon, jdk,
           mavenLocalRepo: ".m2/$jdkRepository",
           jdk: "jdk-$jdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          executeMavenWithAuditLogVerification(
+            jdk == deployJdk && ossindexEnabled,
+            "${niceCmd}$MVN_CMD $mvnCommon -U ${jdk == deployJdk ? '' : "-Dalt.build.dir=target-jdk-$jdk -Pjenkins-build-altjdk "}$buildPhases"
+          )
         }
         script {
           // Create a separate copy for "Deploy Tests" stage
@@ -1293,6 +1330,75 @@ def analysisSteps() {
         sourceCodeEncoding: 'UTF-8',
         tools: tools
       )
+    })
+  }
+}
+
+def auditReleaseBranchWhen() {
+  // Respect ossindexEnabled parameter
+  if (!ossindexEnabled) {
+    echo "auditReleaseBranchWhen: Skipping due to !param.ossindexEnabled"
+    return false
+  }
+  return (scmReleaseBranch != null && scmReleaseBranch != '' && scmBranch != scmReleaseBranch)
+}
+
+def auditReleaseBranch() {
+  lock(
+    label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
+    quantity: 1,
+    priority: this.lockPriority,
+    reason: "Audit Release Branch (${scmReleaseBranch})"
+  ) {
+    withTimeoutHandling(Timeouts.AUDIT_RELEASE_BRANCH_STEPS_TIMEOUT, {
+      dir('audit-release-branch') {
+        // Do minimal shallow clone
+        checkout scm: [$class: 'GitSCM',
+          userRemoteConfigs: [[
+            url: scmUrl,
+            refspec: "+refs/heads/$scmReleaseBranch:refs/remotes/origin/$scmReleaseBranch"
+          ]],
+          branches: [[name: "refs/heads/$scmReleaseBranch"]],
+          extensions: [
+            [$class: 'CloneOption',
+              shallow: true,
+              depth: 1,
+              honorRefspec: true,
+              noTags: true
+            ],
+            [$class: 'SparseCheckoutPaths',
+              sparseCheckoutPaths: [
+                [path:'/.gitignore'],
+                [path:'/.gitmodules'],
+                [path:'/.mvn/'],
+                [path:(projectDir == '.') ? '/repository/' : "/${projectDir}/repository/"],
+                [path:(projectDir == '.') ? '/pom.xml' : "/${projectDir}/pom.xml"]
+              ]
+            ],
+            [$class: 'SubmoduleOption',
+              disableSubmodules: true
+            ]
+          ]
+        ]
+        dir(projectDir) {
+          def jdkRepository = "repository-jdk-$deployJdk".toString()
+          if (!jdkRepositoriesUsed.contains(jdkRepository)) {
+            throw new AssertionError("jdkRepository should have already been added to jdkRepositoriesUsed during Deploy: $jdkRepository")
+          }
+          // Note: publisherStrategy might be needed here if this nested build interferes with the overall build
+          withMaven(
+            maven: maven,
+            mavenOpts: mavenOpts,
+            mavenLocalRepo: "../${(projectDir == '.') ? '' : '../'}.m2/$jdkRepository",
+            jdk: "jdk-$deployJdk"
+          ) {
+            executeMavenWithAuditLogVerification(
+              true,
+              "${niceCmd}$MVN_CMD $mvnCommon -Dossindex.authId='sonatype-ossindex' org.sonatype.ossindex.maven:ossindex-maven-plugin:audit"
+            )
+          }
+        }
+      }
     })
   }
 }
