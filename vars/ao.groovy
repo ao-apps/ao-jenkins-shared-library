@@ -173,7 +173,7 @@ class Constants {
 @Field private String projectDir
 @Field private String scmUrl
 @Field private String scmBranch
-@Field private String scmReleaseBranch
+@Field private List scmAdditionalAuditBranches
 @Field private Integer lockPriority
 @Field private String maven
 @Field private String mavenOpts
@@ -480,11 +480,21 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
   }
   scmBranch = scriptBinding.getVariable('scmBranch')
 
-  if (!scriptBinding.hasVariable('scmReleaseBranch')) {
+  if (scriptBinding.hasVariable('scmAdditionalAuditBranches')) {
+    def scmAabVar = scriptBinding.getVariable('scmAdditionalAuditBranches')
+    // Normalize to List<String>
+    if (scmAabVar instanceof List) {
+      // Convert each value to String
+      scmAdditionalAuditBranches = scmAabVar.collect { it.toString() }
+    } else {
+      // Convert into List<String>
+      scmAdditionalAuditBranches = [scmAabVar.toString()]
+    }
+  } else {
     // No default, only performed on projects that opt-in
-    scriptBinding.setVariable('scmReleaseBranch', '')
+    scmAdditionalAuditBranches = []
+    scriptBinding.setVariable('scmAdditionalAuditBranches', scmAdditionalAuditBranches)
   }
-  scmReleaseBranch = scriptBinding.getVariable('scmReleaseBranch')
 
   if (!scriptBinding.hasVariable('scmBrowser')) {
     // Automatically determine SCM browser
@@ -1334,68 +1344,78 @@ def analysisSteps() {
   }
 }
 
-def auditReleaseBranchWhen() {
+def auditAdditionalBranchesWhen() {
   // Respect ossindexEnabled parameter
   if (!ossindexEnabled) {
-    echo "auditReleaseBranchWhen: Skipping due to !param.ossindexEnabled"
+    echo "auditAdditionalBranchesWhen: Skipping due to !param.ossindexEnabled"
     return false
   }
-  return (scmReleaseBranch != null && scmReleaseBranch != '' && scmBranch != scmReleaseBranch)
+  // When has any value other than scmBranch, will run
+  return scmAdditionalAuditBranches.any {it != scmBranch}
 }
 
-def auditReleaseBranch() {
+def auditAdditionalBranches() {
+  def jdkRepository = "repository-jdk-$deployJdk".toString()
+  if (!jdkRepositoriesUsed.contains(jdkRepository)) {
+    throw new AssertionError("jdkRepository should have already been added to jdkRepositoriesUsed during Deploy: $jdkRepository")
+  }
+  // Build filtered list of which additional branches will be audited
+  def branchesToDo = scmAdditionalAuditBranches.findAll {it != scmBranch}
+  if (branchesToDo.empty) {
+    throw new AssertionError('branchesToDo is empty, filtering inconsistent with auditAdditionalBranchesWhen()?')
+  }
   lock(
     label: "${Constants.STAGE_CONCURRENCY_LIMITER_PREFIX}${env.NODE_NAME}",
     quantity: 1,
     priority: this.lockPriority,
-    reason: "Audit Release Branch (${scmReleaseBranch})"
+    reason: "Audit Additional Branches (${branchesToDo.size() == 1 ? branchesToDo[0] : branchesToDo})"
   ) {
     withTimeoutHandling(Timeouts.AUDIT_RELEASE_BRANCH_STEPS_TIMEOUT, {
       dir('audit-release-branch') {
-        // Do minimal shallow clone
-        checkout scm: [$class: 'GitSCM',
-          userRemoteConfigs: [[
-            url: scmUrl,
-            refspec: "+refs/heads/$scmReleaseBranch:refs/remotes/origin/$scmReleaseBranch"
-          ]],
-          branches: [[name: "refs/heads/$scmReleaseBranch"]],
-          extensions: [
-            [$class: 'CloneOption',
-              shallow: true,
-              depth: 1,
-              honorRefspec: true,
-              noTags: true
-            ],
-            [$class: 'SparseCheckoutPaths',
-              sparseCheckoutPaths: [
-                [path:'/.gitignore'],
-                [path:'/.gitmodules'],
-                [path:'/.mvn/'],
-                [path:(projectDir == '.') ? '/repository/' : "/${projectDir}/repository/"],
-                [path:(projectDir == '.') ? '/pom.xml' : "/${projectDir}/pom.xml"]
+        branchesToDo.eachWithIndex { branchName, index ->
+          dir(index.toString()) {
+            // Do minimal shallow clone
+            checkout scm: [$class: 'GitSCM',
+              userRemoteConfigs: [[
+                url: scmUrl,
+                refspec: "+refs/heads/$branchName:refs/remotes/origin/$branchName"
+              ]],
+              branches: [[name: "refs/heads/$branchName"]],
+              extensions: [
+                [$class: 'CloneOption',
+                  shallow: true,
+                  depth: 1,
+                  honorRefspec: true,
+                  noTags: true
+                ],
+                [$class: 'SparseCheckoutPaths',
+                  sparseCheckoutPaths: [
+                    [path:'/.gitignore'],
+                    [path:'/.gitmodules'],
+                    [path:'/.mvn/'],
+                    [path:(projectDir == '.') ? '/repository/' : "/${projectDir}/repository/"],
+                    [path:(projectDir == '.') ? '/pom.xml' : "/${projectDir}/pom.xml"]
+                  ]
+                ],
+                [$class: 'SubmoduleOption',
+                  disableSubmodules: true
+                ]
               ]
-            ],
-            [$class: 'SubmoduleOption',
-              disableSubmodules: true
             ]
-          ]
-        ]
-        dir(projectDir) {
-          def jdkRepository = "repository-jdk-$deployJdk".toString()
-          if (!jdkRepositoriesUsed.contains(jdkRepository)) {
-            throw new AssertionError("jdkRepository should have already been added to jdkRepositoriesUsed during Deploy: $jdkRepository")
-          }
-          // Note: publisherStrategy might be needed here if this nested build interferes with the overall build
-          withMaven(
-            maven: maven,
-            mavenOpts: mavenOpts,
-            mavenLocalRepo: "../${(projectDir == '.') ? '' : '../'}.m2/$jdkRepository",
-            jdk: "jdk-$deployJdk"
-          ) {
-            executeMavenWithAuditLogVerification(
-              true,
-              "${niceCmd}$MVN_CMD $mvnCommon -Dossindex.authId='sonatype-ossindex' org.sonatype.ossindex.maven:ossindex-maven-plugin:audit"
-            )
+            dir(projectDir) {
+              // Note: publisherStrategy might be needed here if this nested build interferes with the overall build
+              withMaven(
+                maven: maven,
+                mavenOpts: mavenOpts,
+                mavenLocalRepo: "../../${(projectDir == '.') ? '' : '../'}.m2/$jdkRepository",
+                jdk: "jdk-$deployJdk"
+              ) {
+                executeMavenWithAuditLogVerification(
+                  true,
+                  "${niceCmd}$MVN_CMD $mvnCommon -Dossindex.authId='sonatype-ossindex' org.sonatype.ossindex.maven:ossindex-maven-plugin:audit"
+                )
+              }
+            }
           }
         }
       }
