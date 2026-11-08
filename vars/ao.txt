@@ -108,6 +108,16 @@ scmBrowser
         '/srv/git/nmwoss/*'  -> 'https://github.com/newmediaworks/*'
         '/srv/git/*'         -> No default
 
+scmShallow
+
+    Whether to perform a shallow checkout.
+    Defaults to false
+
+scmDepth
+
+    The depth applied during shallow checkouts, only used when scmShallow is true.
+    Defaults to 20
+
 buildPriority
 
     The build job priority from 1 to 30 (lower is build first).

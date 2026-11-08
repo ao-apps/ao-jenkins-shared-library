@@ -174,6 +174,8 @@ class Constants {
 @Field private String scmUrl
 @Field private String scmBranch
 @Field private List scmAdditionalAuditBranches
+@Field private boolean scmShallow
+@Field private int scmDepth
 @Field private Integer lockPriority
 @Field private String maven
 @Field private String mavenOpts
@@ -526,6 +528,20 @@ def setVariables(scriptBinding, currentBuild, scm, params) {
       throw new Exception("Unexpected SCM URL: '$scmUrl'")
     }
     scriptBinding.setVariable('scmBrowser', defaultScmBrowser)
+  }
+
+  if (!scriptBinding.hasVariable('scmShallow')) {
+    scmShallow = false
+    scriptBinding.setVariable('scmShallow', scmShallow)
+  } else {
+    scmShallow = scriptBinding.getVariable('scmShallow').toString().toBoolean()
+  }
+
+  if (!scriptBinding.hasVariable('scmDepth')) {
+    scmDepth = 20
+    scriptBinding.setVariable('scmDepth', scmDepth)
+  } else {
+    scmDepth = scriptBinding.getVariable('scmDepth').toString().toInteger()
   }
 
   // Variables temporarily used in project resolution
@@ -963,18 +979,19 @@ private def gitCheckout(scmUrl, scmBranch, scmBrowser, sparseCheckoutPaths, disa
       // CleanCheckout was too aggressive and removed the workspace .m2 folder, added "sh" steps below
       // [$class: 'CleanCheckout'],
       [$class: 'CloneOption',
-        // See https://issues.jenkins.io/browse/JENKINS-45586
-        shallow: false,
-        // depth: 20,
-        honorRefspec: true
+        // See JENKINS-45586 at https://github.com/jenkinsci/git-plugin/issues/3148
+        shallow: scmShallow,
+        depth: scmShallow ? scmDepth : 0,
+        honorRefspec: true,
+        noTags: scmShallow
       ],
       [$class: 'SparseCheckoutPaths',
         sparseCheckoutPaths: sparseCheckoutPaths
       ],
       [$class: 'SubmoduleOption',
         disableSubmodules: disableSubmodules,
-        shallow: false
-        // depth: 20
+        shallow: scmShallow,
+        depth: scmShallow ? scmDepth : 0
       ]
     ]
   ]
