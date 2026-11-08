@@ -1412,7 +1412,7 @@ def auditAdditionalBranches() {
               ) {
                 executeMavenWithAuditLogVerification(
                   true,
-                  "${niceCmd}$MVN_CMD $mvnCommon -Dossindex.authId='sonatype-ossindex' org.sonatype.ossindex.maven:ossindex-maven-plugin:audit"
+                  "${niceCmd}$MVN_CMD $mvnCommon -Dossindex.authId='sonatype-ossindex' -Dossindex.scope=runtime org.sonatype.ossindex.maven:ossindex-maven-plugin:audit"
                 )
               }
             }
