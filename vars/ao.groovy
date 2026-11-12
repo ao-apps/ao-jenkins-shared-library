@@ -1419,6 +1419,7 @@ def auditAdditionalBranches() {
                 ]
               ]
             ]
+            sh "${niceCmd}git verify-commit HEAD"
             dir(projectDir) {
               // Note: publisherStrategy might be needed here if this nested build interferes with the overall build
               withMaven(
