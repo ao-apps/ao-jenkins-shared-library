@@ -1247,7 +1247,7 @@ def deploySteps(projectDir, niceCmd, deployJdk, maven, mavenOpts, mvnCommon) {
           mavenLocalRepo: ".m2/$jdkRepository",
           jdk: "jdk-$deployJdk"
         ) {
-          sh "${niceCmd}$MVN_CMD $mvnCommon -U -Pnexus,jenkins-deploy,publish deploy"
+          sh "${niceCmd}$MVN_CMD $mvnCommon -U -Pjenkins-deploy,publish deploy"
         }
         // Restore surefire-reports
         sh restoreSurefireReportsScript()
